@@ -11,7 +11,7 @@ from app.auth.auth import (
     TokenData, get_hash_password
 )
 from app.database import insert_user, get_user_by_id, get_all_users_query, get_user_by_username
-from app.models import UserDb, UserRegister, UserOut
+from app.models.models import UserDb, UserRegister, UserOut
 
 router = APIRouter(
     prefix="/users",

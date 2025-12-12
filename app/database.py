@@ -1,6 +1,5 @@
-from tkinter.font import names
 import mariadb
-from app.models import UserDb
+from app.models.models import UserDb
 
 
 db_config = {
