@@ -18,29 +18,44 @@ def insert_user(user:UserDb):
         # Cursor es el objeto con el que podemos usar SQL
         with conn.cursor() as cursor:
             # Primera consulta
-            sql = "insert into users (username,email, password) values (?, ?, ?)"
-            values = (user.username, user.email, user.password)
+            sql = "insert into USER (id, username, password, email) values (?, ?, ?, ?)"
+            values = (str(user.id), user.username, user.password, user.email)
             cursor.execute(sql, values)
             conn.commit()
-            return cursor.lastrowid
+            return user.id
 
+
+def get_user_by_id(id_user: str):
+    with mariadb.connect(**db_config) as conn:
+        with conn.cursor() as cursor:
+            sql = "SELECT id, username, password, email FROM USER WHERE id = ?"
+            cursor.execute(sql, (id_user,))
+            row = cursor.fetchone()
+            if row is None:
+                return None
+            return UserDb(id=str(row[0]), username=row[1], password=row[2], email=row[3])
+def get_all_users_query():
+    with mariadb.connect(**db_config) as conn:
+        with conn.cursor() as cursor:
+            sql = "SELECT id, username, password, email FROM USER"
+            cursor.execute(sql)
+            rows = cursor.fetchall()
+
+            users = []
+            for row in rows:
+                users.append(
+                    UserDb(id=row[0],username=row[1],password=row[2],email=row[3])
+                )
+            return users
 
 def get_user_by_username(username: str) -> UserDb | None:
-    for u in users:
-        if u.username == username:
-            return u
-    return None
-users: list[UserDb] = [
-    UserDb(
-        id=1,
-        username='Alice',
-        email='alice@gmail.com',
-        password='$2b$12$SO1mefC/IBZ5t9qbyLTUE.hJne994Oz8wWpwQRiWC3C9yij4MYiWO'
-    ),
-    UserDb(
-        id=2,
-        username='Bob',
-        email='bob@gmail.com',
-        password='$2b$12$GUV8UnCTmBdzb1tDGkrUQuMaitIGuMdf.3MCLqYNwRxsE016IZq86'
-    )
-]
+    with mariadb.connect(**db_config) as conn:
+        with conn.cursor() as cursor:
+            sql = "SELECT id, username, password, email FROM `USER` WHERE username = ?"
+            values = (username,)
+            cursor.execute(sql, values)
+
+            row = cursor.fetchone()
+            if row:
+                return UserDb(id=row[0], username=row[1], password=row[2], email=row[3])
+            return None

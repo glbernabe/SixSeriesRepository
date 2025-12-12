@@ -1,3 +1,5 @@
+from uuid import UUID
+
 from pydantic import BaseModel
 
 class UserBase(BaseModel):
@@ -14,13 +16,13 @@ class UserLogin(BaseModel):
 
 
 class UserDb(BaseModel):
-    id: int | None = None
+    id: str
     username: str
     email: str
     password: str
 
 
 class UserOut(BaseModel):
-    id: int
+    id: str | None = None
     username: str
     email: str
