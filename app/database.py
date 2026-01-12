@@ -3,10 +3,10 @@ from app.models.models import UserDb
 
 
 db_config = {
-    "host": "myapidb",
+    "host": "localhost",
     "port": 3306,
-    "user": "myapi" ,
-    "password": "myapi" ,
+    "user": "root" ,
+    "password": "root" ,
     "database": "myapi"
 }
 
@@ -33,6 +33,8 @@ def get_user_by_id(id_user: str):
             if row is None:
                 return None
             return UserDb(id=str(row[0]), username=row[1], password=row[2], email=row[3])
+        
+        
 def get_all_users_query():
     with mariadb.connect(**db_config) as conn:
         with conn.cursor() as cursor:
@@ -58,3 +60,15 @@ def get_user_by_username(username: str) -> UserDb | None:
             if row:
                 return UserDb(id=row[0], username=row[1], password=row[2], email=row[3])
             return None
+
+def get_all_content_query():
+    with mariadb.connect(**db_config) as conn:
+        with conn.cursor() as cursor:
+            sql = "SELECT * FROM `CONTENT`"
+            cursor.execute(sql)
+            rows = cursor.fetchall()
+
+            titles = []
+            for row in rows:
+                titles.append(row)
+            return titles

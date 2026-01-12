@@ -1,4 +1,5 @@
 from pydantic import BaseModel
+from enum import Enum
 
 class UserBase(BaseModel):
     email: str
@@ -24,3 +25,19 @@ class UserOut(BaseModel):
     id: str | None = None
     username: str
     email: str
+
+class ContentType(str, Enum):
+    series = "series"
+    movie = "movie"
+    documentary = "documentary"
+
+class Content(BaseModel):
+    id: str | None = None
+    title: str
+    description: str
+    duration: int
+    age_rating: str
+    cover_url: str
+    video_url: str
+    type: ContentType
+

@@ -38,7 +38,7 @@ async def create_user(user_register: UserRegister):
 
     insert_user(new_user)
 
-    return UserOut(username=new_user.username, email=new_user.email)
+    return UserOut(id=new_user.id, username=new_user.username, email=new_user.email)
 
 
 @router.post("/login/", response_model=Token, status_code=status.HTTP_200_OK)
@@ -83,5 +83,3 @@ async def get_all_users(token: str = Depends(oauth2_scheme)):
         UserOut(id=user_db.id, username=user_db.username, email=user_db.email)
         for user_db in users
     ]
-
-
