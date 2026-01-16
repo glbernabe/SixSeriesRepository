@@ -1,5 +1,5 @@
 import mariadb
-from app.models.models import UserDb
+from app.models.models import UserDb, Content
 
 
 db_config = {
@@ -61,6 +61,26 @@ def get_user_by_username(username: str) -> UserDb | None:
                 return UserDb(id=row[0], username=row[1], password=row[2], email=row[3])
             return None
 
+# Verificar que hay un superusuario con el nombre de usuario que se pasa
+def verify_superuser(username: str) -> bool | None:
+    with mariadb.connect(**db_config) as conn:
+        with conn.cursor() as cursor:
+            
+            user = get_user_by_username(username)
+
+            sql = "SELECT id FROM `SUPERUSER` WHERE id = ?"
+            values = (user.id,)
+            cursor.execute(sql, values)
+
+            row = cursor.fetchone()
+            
+            if row:
+                return True
+            else:
+                return False
+
+# ---------------------- CONTENT ----------------------
+
 def get_all_content_query():
     with mariadb.connect(**db_config) as conn:
         with conn.cursor() as cursor:
@@ -72,3 +92,13 @@ def get_all_content_query():
             for row in rows:
                 titles.append(row)
             return titles
+        
+def create_content(content: Content):
+    with mariadb.connect(**db_config) as conn:
+        with conn.cursor() as cursor:
+            sql = "INSERT INTO CONTENT (id, title, description, duration, ageRating, coverUrl, videoUrl, type) values (?,?,?,?,?,?,?,?)"
+            values = (content.id, content.title, content.description, content.duration, content.age_rating, content.cover_url, content.video_url, content.type)
+            cursor.execute(sql, values)
+            conn.commit()
+
+                
