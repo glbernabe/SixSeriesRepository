@@ -1,5 +1,6 @@
 from pydantic import BaseModel
 from enum import Enum
+from typing import Optional
 
 class UserBase(BaseModel):
     email: str
@@ -34,8 +35,7 @@ class ContentType(str, Enum):
     movie = "movie"
     documentary = "documentary"
 
-class Content(BaseModel):
-    id: str | None = None
+class ContentUser(BaseModel):    
     title: str
     description: str
     duration: int
@@ -44,3 +44,6 @@ class Content(BaseModel):
     video_url: str
     type: ContentType
 
+class ContentDb(ContentUser):
+    id: str
+    

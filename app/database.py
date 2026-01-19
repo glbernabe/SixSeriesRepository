@@ -1,5 +1,5 @@
 import mariadb
-from app.models.models import UserDb, Content
+from app.models.models import UserDb, ContentDb, ContentUser
 
 
 db_config = {
@@ -92,8 +92,25 @@ def get_all_content_query():
             for row in rows:
                 titles.append(row)
             return titles
-        
-def create_content(content: Content):
+
+def get_content_by_title(title: str):
+    with mariadb.connect(**db_config) as conn:
+        with conn.cursor() as cursor:
+            sql = sql = """
+                SELECT title, description, duration, ageRating, coverUrl, videoUrl, type
+                FROM CONTENT
+                WHERE title = ?"""
+            values = (title,)
+            cursor.execute(sql, values)
+
+            row = cursor.fetchone()
+            if row:
+                return ContentUser(title=row[0], description=row[1], duration=row[2],
+                                   age_rating=row[3], cover_url=row[4], video_url=row[5],
+                                   type=row[6])
+            return None
+
+def create_content(content: ContentDb):
     with mariadb.connect(**db_config) as conn:
         with conn.cursor() as cursor:
             sql = "INSERT INTO CONTENT (id, title, description, duration, ageRating, coverUrl, videoUrl, type) values (?,?,?,?,?,?,?,?)"
