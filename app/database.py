@@ -1,7 +1,10 @@
+import uuid
+
 import mariadb
-from app.models.models import UserDb
 
+from app.models.models import UserDb, SubscriptionDb, UserId
 
+# ----------------------------- DATABASE CONFIG ---------------------------------
 db_config = {
     "host": "myapidb",
     "port": 3306,
@@ -9,7 +12,7 @@ db_config = {
     "password": "myapi" ,
     "database": "myapi"
 }
-
+# ----------------------------- USERS ----------------------------------------
 def insert_user(user:UserDb):
     # Doble asterisco transforma el diccionario en una lista de parametros/argumentos (**)
     # Por ejemplo, host="myapidb", port=3306, user="myapi"...
@@ -58,3 +61,42 @@ def get_user_by_username(username: str) -> UserDb | None:
             if row:
                 return UserDb(id=row[0], username=row[1], password=row[2], email=row[3])
             return None
+
+# -------------------------- SUBSCRIPTION ---------------------------------
+from datetime import date
+import uuid
+
+def add_subscription_query(user_id: str, sub_type: str, end_date:date) -> dict:
+    subscription_id = str(uuid.uuid4())
+    start_date = date.today()
+    with mariadb.connect(**db_config) as conn:
+        with conn.cursor() as cursor:
+            sql = "INSERT INTO SUBSCRIPTION (id, userId, type, startDate, endDate)VALUES (?, ?, ?, ?, ?) "
+            cursor.execute(sql,(subscription_id, user_id, sub_type, start_date, end_date))
+            conn.commit()
+    return {
+        "id": subscription_id,
+        "user_id": user_id,
+        "type": sub_type,
+        "startDate": start_date,
+        "endDate": end_date
+    }
+def get_subscription_query(user_id: str) -> list[dict]:
+    with mariadb.connect(**db_config) as conn:
+        with conn.cursor() as cursor:
+            sql = "SELECT id,startDate, endDate, status, type FROM SUBSCRIPTION WHERE userId = ?"
+            cursor.execute(sql, (user_id,))
+            results = cursor.fetchall()
+
+            subscription = []
+            for row in results:
+                subscription.append({
+                    "id": row[0],
+                    "startDate": row[1],
+                    "endDate": row[2],
+                    "status": row[3],
+                    "type": row[4]
+                })
+            return subscription
+
+

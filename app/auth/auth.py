@@ -4,7 +4,7 @@ from datetime import datetime, timedelta
 from fastapi.security import OAuth2PasswordBearer
 from jose import jwt, JWTError
 from pydantic import BaseModel
-from fastapi import APIRouter, status, HTTPException
+from fastapi import APIRouter, status, HTTPException, Depends
 from app.models.models import UserBase
 
 SECRET_KEY = "1234567890"
@@ -13,7 +13,7 @@ ACCESS_TOKEN_EXPIRE_MIN = 7 * 24 * 60
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/users/login/")
 
-
+#ROLES = ["user", "superuser"]
 class Token(BaseModel):
     access_token: str
     token_type: str
@@ -21,6 +21,7 @@ class Token(BaseModel):
 
 class TokenData(BaseModel):
     username: str | None = None
+    #role: str | None = None
 
 
 def get_hash_password(plain_pw: str) -> str:
@@ -38,7 +39,7 @@ def verify_password(plain_pw, hashed_pw) -> bool:
 
 def create_access_token(user: UserBase) -> Token:
     expire = datetime.utcnow() + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MIN)
-    to_encode = {"sub": user.username, "exp": expire}
+    to_encode = {"sub": user.username, """role":user.role,""" "exp": expire}
     encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
     return Token(access_token=encoded_jwt, token_type="bearer")
 
@@ -46,10 +47,25 @@ def create_access_token(user: UserBase) -> Token:
 def decode_token(token: str) -> TokenData:
     try:
         payload: dict = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
-        return TokenData(username=payload.get("sub"))
+        return TokenData(
+            username=payload.get("sub"),
+            #role=payload.get("role")
+        )
     except JWTError:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Could not validate credentials",
             headers={"WWW-Authenticate": "Bearer"}
         )
+"""def require_role(required_role: str):
+    def check(token: str = Depends(oauth2_scheme)):
+        data = decode_token(token)
+
+        if data.role != required_role:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Not enough privileges"
+            )
+        return data
+    return check
+"""

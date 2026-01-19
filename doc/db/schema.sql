@@ -14,57 +14,33 @@ REFERENCES USER(id)
 ON DELETE CASCADE
 );
 
-CREATE TABLE CLIENT (
-id VARCHAR(255) PRIMARY KEY,
-CONSTRAINT fk_client FOREIGN KEY (id)
-REFERENCES USER(id)
-ON DELETE CASCADE
-);
-
 CREATE TABLE SUBSCRIPTION (
 id VARCHAR(255) PRIMARY KEY,
+userId VARCHAR(255) NOT NULL,
 startDate DATE NOT NULL,
 endDate DATE NOT NULL,
 status ENUM("active", "expired") NOT NULL,
-type ENUM("standard", "premium", "standard_yearly", "premium_yearly") NOT NULL
-);
-
-CREATE TABLE CLIENT_SUBSCRIPTION (
-clientId VARCHAR(255) NOT NULL,
-subscriptionId VARCHAR(255) NOT NULL,
-PRIMARY KEY (clientId, subscriptionId),
-CONSTRAINT fk_cs_client FOREIGN KEY (clientId)
-REFERENCES CLIENT(id)
-ON DELETE CASCADE,
-CONSTRAINT fk_cs_sub FOREIGN KEY (subscriptionId)
-REFERENCES SUBSCRIPTION(id)
+type ENUM("standard", "premium", "standard_yearly", "premium_yearly") NOT NULL,
+CONSTRAINT fk_sub_user FOREIGN KEY (userId)
+REFERENCES USER(id)
 ON DELETE CASCADE
 );
 
 CREATE TABLE PAYMENT (
 id VARCHAR(255) PRIMARY KEY,
+subscriptionId VARCHAR(255) NOT NULL,
 paymentDate DATE NOT NULL,
 method ENUM("card", "paypal") NOT NULL,
-status ENUM("pending", "completed", "failed") NOT NULL
-);
-
-CREATE TABLE CLIENT_PAYMENT (
-clientId VARCHAR(255) NOT NULL,
-paymentId VARCHAR(255) NOT NULL,
-PRIMARY KEY (clientId, paymentId),
-CONSTRAINT fk_cp_client FOREIGN KEY (clientId)
-REFERENCES CLIENT(id)
-ON DELETE CASCADE,
-CONSTRAINT fk_cp_payment FOREIGN KEY (paymentId)
-REFERENCES PAYMENT(id)
+status ENUM("pending", "completed", "failed") NOT NULL,
+CONSTRAINT fk_pm_cliente FOREIGN KEY (subscriptionId)
+REFERENCES SUBSCRIPTION(id)
 ON DELETE CASCADE
 );
-
 CREATE TABLE PROFILE (
 id VARCHAR(255) PRIMARY KEY,
-clientId VARCHAR(255) NOT NULL,
-CONSTRAINT fk_profile_client FOREIGN KEY (clientId)
-REFERENCES CLIENT(id)
+userId VARCHAR(255) NOT NULL,
+CONSTRAINT fk_profile_user FOREIGN KEY (userId)
+REFERENCES USER(id)
 ON DELETE CASCADE
 );
 

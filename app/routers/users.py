@@ -38,7 +38,7 @@ async def create_user(user_register: UserRegister):
 
     insert_user(new_user)
 
-    return UserOut(username=new_user.username, email=new_user.email)
+    return UserOut(id=new_user.id, username=new_user.username, email=new_user.email)
 
 
 @router.post("/login/", response_model=Token, status_code=status.HTTP_200_OK)
@@ -59,15 +59,15 @@ async def login_user(form_data: OAuth2PasswordRequestForm = Depends()):
 
 @router.get("/{id}", status_code=status.HTTP_200_OK, response_model=UserOut)
 async def get_user(id: str):
-    if get_user_by_id(id) is not None:
-        return get_user_by_id(id)
+    user = get_user_by_id(id)
+    if user is None:
 
-    raise HTTPException(
-        status_code=status.HTTP_404_NOT_FOUND,
-        detail="User with this ID doesn't exist."
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="User with this ID doesn't exist."
 
-    )
-
+        )
+    return UserOut(id=user.id, username=user.username, email=user.email)
 
 @router.get("/", response_model=List[UserOut], status_code=status.HTTP_200_OK)
 async def get_all_users(token: str = Depends(oauth2_scheme)):
@@ -83,5 +83,14 @@ async def get_all_users(token: str = Depends(oauth2_scheme)):
         UserOut(id=user_db.id, username=user_db.username, email=user_db.email)
         for user_db in users
     ]
-
+@router.get("/{getuser}/", response_model=UserOut, status_code=status.HTTP_200_OK)
+async def get_user_by_username_endpoint(token: str = Depends(oauth2_scheme)):
+    data: TokenData = decode_token(token)
+    user = get_user_by_username(data.username)
+    if user is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="User not found"
+        )
+    return UserOut(id=user.id, username=user.username, email=user.email)
 

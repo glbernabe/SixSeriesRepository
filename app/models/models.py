@@ -1,5 +1,5 @@
 from pydantic import BaseModel
-
+from datetime import date
 class UserBase(BaseModel):
     email: str
 
@@ -7,11 +7,12 @@ class UserRegister(UserBase):
     username: str
     password: str
 
-
 class UserLogin(BaseModel):
     email: str
     password: str
 
+class UserId(BaseModel):
+    id: str
 
 class UserDb(BaseModel):
     id: str
@@ -24,3 +25,35 @@ class UserOut(BaseModel):
     id: str | None = None
     username: str
     email: str
+
+class SubscriptionBase(BaseModel):
+    type: str
+class SubscriptionCreate(SubscriptionBase):
+    pass
+class SubscriptionDb(SubscriptionCreate):
+    id: str
+    user_id: str
+    startdate: date
+    endDate: date
+    status: str
+
+class SubscriptionOut(BaseModel):
+    type: str
+    startDate: date
+    endDate: date
+    status: str
+class PaymentCreate(BaseModel):
+    method: str
+    amount: float
+
+class PaymentDb(BaseModel):
+    id: str
+    subscription_id: str
+    paymentDate: date
+    method: str
+    status: str
+    amount: float
+
+class ProfileDb(BaseModel):
+    id: str
+    user_id: str
