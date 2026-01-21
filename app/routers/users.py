@@ -58,7 +58,7 @@ async def login_user(form_data: OAuth2PasswordRequestForm = Depends()):
     return token
 
 
-@router.get("/{id}", status_code=status.HTTP_200_OK, response_model=UserOut)
+"""@router.get("/{id}", status_code=status.HTTP_200_OK, response_model=UserOut)
 async def get_user(id: str):
     user = get_user_by_id(id)
     if user is None:
@@ -69,7 +69,7 @@ async def get_user(id: str):
 
         )
     return UserOut(id=user.id, username=user.username, email=user.email)
-
+"""
 @router.get("/", response_model=List[UserOut], status_code=status.HTTP_200_OK)
 async def get_all_users(token: str = Depends(oauth2_scheme)):
     data: TokenData = decode_token(token)

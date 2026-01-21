@@ -27,3 +27,5 @@ async def create_profile(method: str, token: str = Depends(oauth2_scheme)):
         )
     payment = confirm_payment_query(user.username, method)
     return payment
+
+# Falta get pagos y obtener el status de la subscripcion, get my info by token, maybe delete users,

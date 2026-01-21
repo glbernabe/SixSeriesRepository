@@ -190,6 +190,19 @@ def delete_profile_query(user_username: str, name:str):
             conn.commit()
 
             return {"name": name}
+def get_profiles_query(user_username: str):
+    with mariadb.connect(**db_config) as conn:
+        with conn.cursor() as cursor:
+            sql = "SELECT name FROM PROFILE WHERE userUsername = ?"
+            cursor.execute(sql, (user_username,))
+            rows = cursor.fetchall()
+
+            names = []
+            for row in rows:
+                names.append(
+                    ProfileOut(name=row[0])
+                )
+            return names
 # ------------- SUPERUSER -------------------------------------
 def get_superuser_permissions(user_id: str):
     with mariadb.connect(**db_config) as conn:
