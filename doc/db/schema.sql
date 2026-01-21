@@ -4,7 +4,7 @@ SET NAMES utf8;
 SET time_zone = '+00:00';
 SET foreign_key_checks = 0;
 SET sql_mode = 'NO_AUTO_VALUE_ON_ZERO';
-
+CREATE DATABASE myapi;
 USE `myapi`;
 
 SET NAMES utf8mb4;
@@ -74,6 +74,7 @@ CREATE TABLE `PAYMENT` (
   `paymentDate` date NOT NULL,
   `method` enum('card','paypal') NOT NULL,
   `status` enum('pending','completed','failed') NOT NULL,
+  `amount` float NOT NULL,
   PRIMARY KEY (`id`),
   KEY `fk_pm_cliente` (`subscriptionId`),
   CONSTRAINT `fk_pm_cliente` FOREIGN KEY (`subscriptionId`) REFERENCES `SUBSCRIPTION` (`id`) ON DELETE CASCADE
@@ -84,6 +85,7 @@ DROP TABLE IF EXISTS `PROFILE`;
 CREATE TABLE `PROFILE` (
   `id` varchar(255) NOT NULL,
   `userId` varchar(255) NOT NULL,
+  `name` varchar(255) NOT NULL,
   PRIMARY KEY (`id`),
   KEY `fk_profile_user` (`userId`),
   CONSTRAINT `fk_profile_user` FOREIGN KEY (`userId`) REFERENCES `USER` (`id`) ON DELETE CASCADE
@@ -112,7 +114,7 @@ CREATE TABLE `SUBSCRIPTION` (
   `type` enum('standard','premium','standard_yearly','premium_yearly') NOT NULL,
   PRIMARY KEY (`id`),
   KEY `userId` (`userId`),
-  CONSTRAINT `SUBSCRIPTION_ibfk_1` FOREIGN KEY (`userId`) REFERENCES `SUBSCRIPTION` (`id`)
+  CONSTRAINT `SUBSCRIPTION_ibfk_1` FOREIGN KEY (`userId`) REFERENCES `USER` (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_uca1400_ai_ci;
 
 
@@ -135,5 +137,8 @@ CREATE TABLE `USER` (
   PRIMARY KEY (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_uca1400_ai_ci;
 
+INSERT INTO `USER` (`id`, `username`, `password`, `email`, `status`) VALUES
+('38ed5fbe-f916-4d3c-8348-99e4591a2a53',	'string',	'$2b$12$y.WSlo5aPcegFDmzTrY2POpk9UiATjEUuBBgC9anACTzVbfa..N0i',	'string',	'active'),
+('4add36b1-a9d1-438b-b2c7-d139beb3908e',	'gabriel',	'$2b$12$SHm3Cg6AWOKV3B8r9hQ4POUMdyzIa9Hyvh07xvoOeMQJumkGVvW4q',	'gabriel',	'active');
 
--- 2026-01-16 19:47:19 UTC
+-- 2026-01-21 13:16:47 UTC

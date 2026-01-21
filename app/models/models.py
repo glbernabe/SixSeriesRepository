@@ -36,6 +36,7 @@ class SubscriptionDb(SubscriptionCreate):
     startdate: date
     endDate: date
     status: str
+    type: str
 
 class SubscriptionOut(BaseModel):
     type: str
@@ -57,3 +58,7 @@ class PaymentDb(BaseModel):
 class ProfileDb(BaseModel):
     id: str
     user_id: str
+    name: str
+
+class ProfileOut(BaseModel):
+    name: str

@@ -1,8 +1,9 @@
 import uuid
+from http.client import HTTPException
 
 import mariadb
 
-from app.models.models import UserDb, SubscriptionDb, UserId
+from app.models.models import UserDb, SubscriptionDb, UserId, SubscriptionOut, ProfileOut
 
 # ----------------------------- DATABASE CONFIG ---------------------------------
 db_config = {
@@ -99,4 +100,87 @@ def get_subscription_query(user_id: str) -> list[dict]:
                 })
             return subscription
 
+def cancel_subscription_query(user_id: str) -> SubscriptionOut | None:
+    today = date.today()
+    with mariadb.connect(**db_config) as conn:
+        with conn.cursor(dictionary=True) as cursor:
+            sql = "UPDATE SUBSCRIPTION SET endDate = ?, status = ? WHERE userId = ? AND status = 'active'"
+            cursor.execute(sql, (today,'expired', user_id))
+            conn.commit()
+            if cursor.rowcount == 0:
+                return None
+            sql_select = "SELECT type, startDate, endDate, status FROM SUBSCRIPTION WHERE userId = ? AND status = 'expired' ORDER BY endDate DESC LIMIT 1"
+            cursor.execute(sql_select, (user_id,))
+            row = cursor.fetchone()
 
+        return SubscriptionOut(
+            type=row['type'],
+            startDate=row['startDate'],
+            endDate=row['endDate'],
+            status=row['status']
+        )
+
+def has_active_subscription(user_id:str, family:str) -> bool:
+    with mariadb.connect(**db_config) as conn:
+        with conn.cursor() as cursor:
+            with conn.cursor(dictionary=True) as cursor:
+                sql = "SELECT COUNT(*) as count FROM SUBSCRIPTION WHERE userId = ? AND status = 'active' AND (type = ? OR type = ?)"
+                if family == "standard":
+                    cursor.execute(sql, (user_id, "standard", "standard_yearly"))
+                else:
+                    cursor.execute(sql, (user_id, "premium", "premium_yearly"))
+                row = cursor.fetchone()
+                return row['count'] > 0
+
+def update_subscription_query(user_id:str, new_type:str, endDate:date) -> SubscriptionOut | None:
+    with mariadb.connect(**db_config) as conn:
+        with conn.cursor(dictionary=True) as cursor:
+            sql = "UPDATE SUBSCRIPTION SET endDate = ?, type = ? WHERE userId = ?"
+            cursor.execute(sql, (endDate, new_type, user_id))
+            conn.commit()
+
+            sql_select = "SELECT type, startDate, endDate, status FROM SUBSCRIPTION WHERE userId = ? AND status = 'active' ORDER BY endDate DESC LIMIT 1"
+            cursor.execute(sql_select, (user_id,))
+            row = cursor.fetchone()
+
+        return SubscriptionOut(
+            type=row['type'],
+            startDate=row['startDate'],
+            endDate=row['endDate'],
+            status=row['status']
+        )
+# ---------------------------- PROFILE ----------------------------------
+def create_profile_query(user_id: str, name: str):
+    profile_id = str(uuid.uuid4())
+    with mariadb.connect(**db_config) as conn:
+        with conn.cursor() as cursor:
+            sql_select = "SELECT 1 FROM SUBSCRIPTION WHERE userId = ? AND status = 'active'"
+            cursor.execute(sql_select,(user_id,))
+            sub = cursor.fetchone()
+            if not sub:
+                raise Exception("User has no active subscription")
+            sql_count = "SELECT COUNT(*) FROM PROFILE WHERE userId = ?"
+            cursor.execute(sql_count( user_id,))
+            count = cursor.fetchone()[0]
+            if count >= 5:
+                raise Exception("User cannot have more than 5 profiles")
+            sql_insert = "INSERT INTO PROFILE (id, userId, name) VALUES (?, ?, ?)"
+            cursor.execute(sql_insert,(profile_id, user_id, name))
+            conn.commit()
+            sql_select_profile = "SELECT id, userId, name FROM PROFILE WHERE id = ?"
+            cursor.execute(sql_select_profile,(profile_id,))
+            conn.commit()
+
+            return {"name": name}
+
+#def delete_profile_query(user_id: str, name:str)
+# ------------- SUPERUSER -------------------------------------
+def get_superuser_permissions(user_id: str):
+    with mariadb.connect(**db_config) as conn:
+        with conn.cursor() as cursor:
+            sql = "SELECT permissions FROM SUPERUSER WHERE id = ?"
+            cursor.execute(sql, (user_id,))
+            row = cursor.fetchone()
+            if not row:
+                return None
+            return row[0]

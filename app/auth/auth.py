@@ -13,7 +13,6 @@ ACCESS_TOKEN_EXPIRE_MIN = 7 * 24 * 60
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/users/login/")
 
-#ROLES = ["user", "superuser"]
 class Token(BaseModel):
     access_token: str
     token_type: str
@@ -21,7 +20,6 @@ class Token(BaseModel):
 
 class TokenData(BaseModel):
     username: str | None = None
-    #role: str | None = None
 
 
 def get_hash_password(plain_pw: str) -> str:
@@ -39,7 +37,7 @@ def verify_password(plain_pw, hashed_pw) -> bool:
 
 def create_access_token(user: UserBase) -> Token:
     expire = datetime.utcnow() + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MIN)
-    to_encode = {"sub": user.username, """role":user.role,""" "exp": expire}
+    to_encode = {"sub": user.username,"exp": expire}
     encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
     return Token(access_token=encoded_jwt, token_type="bearer")
 
@@ -49,7 +47,6 @@ def decode_token(token: str) -> TokenData:
         payload: dict = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
         return TokenData(
             username=payload.get("sub"),
-            #role=payload.get("role")
         )
     except JWTError:
         raise HTTPException(
@@ -57,15 +54,3 @@ def decode_token(token: str) -> TokenData:
             detail="Could not validate credentials",
             headers={"WWW-Authenticate": "Bearer"}
         )
-"""def require_role(required_role: str):
-    def check(token: str = Depends(oauth2_scheme)):
-        data = decode_token(token)
-
-        if data.role != required_role:
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Not enough privileges"
-            )
-        return data
-    return check
-"""

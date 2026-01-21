@@ -10,7 +10,8 @@ from app.auth.auth import (
     create_access_token, Token, verify_password, oauth2_scheme, decode_token,
     TokenData, get_hash_password
 )
-from app.database import insert_user, get_user_by_id, get_all_users_query, get_user_by_username
+from app.database import insert_user, get_user_by_id, get_all_users_query, get_user_by_username, \
+    get_superuser_permissions
 from app.models.models import UserDb, UserRegister, UserOut
 
 router = APIRouter(
@@ -73,6 +74,8 @@ async def get_user(id: str):
 async def get_all_users(token: str = Depends(oauth2_scheme)):
     data: TokenData = decode_token(token)
     users = get_all_users_query()
+    user = get_user_by_username(data.username)
+    require_permission(user.id, "total")
     if data.username not in [u.username for u in users]:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
@@ -94,3 +97,16 @@ async def get_user_by_username_endpoint(token: str = Depends(oauth2_scheme)):
         )
     return UserOut(id=user.id, username=user.username, email=user.email)
 
+def require_permission(user_id: str, required: str):
+    permission = get_superuser_permissions(user_id)
+    if permission is None:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="User is not superuser"
+        )
+    if permission != "total" and permission != required:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Insufficient permissions"
+        )
+    return True
