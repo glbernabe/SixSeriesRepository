@@ -57,18 +57,6 @@ async def login_user(form_data: OAuth2PasswordRequestForm = Depends()):
     return token
 
 
-@router.get("/{id}", status_code=status.HTTP_200_OK, response_model=UserOut)
-async def get_user(id: str):
-    if get_user_by_id(id) is not None:
-        return get_user_by_id(id)
-
-    raise HTTPException(
-        status_code=status.HTTP_404_NOT_FOUND,
-        detail="User with this ID doesn't exist."
-
-    )
-
-
 @router.get("/", response_model=List[UserOut], status_code=status.HTTP_200_OK)
 async def get_all_users(token: str = Depends(oauth2_scheme)):
     data: TokenData = decode_token(token)

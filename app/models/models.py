@@ -2,6 +2,8 @@ from pydantic import BaseModel
 from enum import Enum
 from typing import Optional
 
+# -------------------- User Models --------------------
+
 class UserBase(BaseModel):
     email: str
 
@@ -30,6 +32,7 @@ class UserOut(BaseModel):
     username: str
     email: str
 
+# -------------------- Content Models --------------------
 class ContentType(str, Enum):
     series = "series"
     movie = "movie"
@@ -46,4 +49,9 @@ class ContentUser(BaseModel):
 
 class ContentDb(ContentUser):
     id: str
-    
+
+# -------------------- Gender Models --------------------
+
+class Genre(BaseModel):
+    id: str
+    name: str

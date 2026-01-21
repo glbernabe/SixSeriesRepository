@@ -1,19 +1,13 @@
 import uuid
 
 from fastapi import APIRouter, status, HTTPException, Depends
-from fastapi.security import OAuth2PasswordRequestForm
-from uuid import UUID
 
-from app.auth.auth import (
-    create_access_token, Token, verify_password, oauth2_scheme, decode_token,
-    TokenData, get_hash_password
-)
-
-from app.database import create_content, get_all_content_query, verify_superuser,get_content_by_title
+from app.auth.auth import (oauth2_scheme, decode_token,TokenData)
+from app.database import create_content_query, get_all_content_query, verify_superuser,get_content_by_title_query, modify_content_query
 from app.models.models import ContentUser,ContentDb, ContentType
 
 router = APIRouter(
-    prefix="/content",
+    prefix="/contents",
     tags=["Contents"]
 )
 
@@ -34,35 +28,49 @@ async def get_all_content():
     ]
 
 @router.post("/", status_code=status.HTTP_201_CREATED)
-async def create_new_content(content: ContentUser, token: str = Depends(oauth2_scheme)):
+async def create_content(content: ContentUser, token: str = Depends(oauth2_scheme)):
     data: TokenData = decode_token(token)
 
-    if verify_superuser(data.username):
-        new_content = ContentUser(
-            id=str(uuid.uuid4()),
-            title= content.title,
-            video_url= content.video_url,
-            age_rating= content.age_rating,
-            cover_url= content.cover_url,
-            description= content.description,
-            duration= content.duration,
-            type= content.type
-        )
-        create_content(new_content)
-        raise HTTPException(201, "Content created.")
-    else:
-        raise HTTPException(401, "You need to be admin.")
+    verify_superuser(data.username)
 
-@router.get("/{title}", status_code=status.HTTP_200_OK)
-async def get_content_information(title: str):
-    if get_content_by_title(title) is not None:
-        return get_content_by_title(title)
+    new_content = ContentDb(
+        id=str(uuid.uuid4()),
+        title= content.title,
+        video_url= content.video_url,
+        age_rating= content.age_rating,
+        cover_url= content.cover_url,
+        description= content.description,
+        duration= content.duration,
+        type= content.type
+    )
+    create_content_query(new_content)
+    raise HTTPException(201, "Content created.")
+   
+
+@router.get("/{title}/", status_code=status.HTTP_200_OK)
+async def get_content_by_title(title: str):
+    if get_content_by_title_query(title) is not None:
+        return get_content_by_title_query(title)
 
     raise HTTPException(
         status_code=status.HTTP_404_NOT_FOUND,
         detail="This title has not been found."
     )
 
-@router.post("/test", response_model=dict)
-def test():
-    return {"ok": True}
+@router.put("/", status_code=status.HTTP_200_OK)
+async def modify_content_query(content_modify: ContentDb, token: str = Depends(oauth2_scheme)):
+    data: TokenData = decode_token(token)
+    verify_superuser(data.username)
+        # Se utiliza el ContentUser para que no se pueda cambiar el UUID, ya que no se debería de tocar
+    new_modification = ContentUser(
+        title= content_modify.title,
+        video_url= content_modify.video_url,
+        age_rating= content_modify.age_rating,
+        cover_url= content_modify.cover_url,
+        description= content_modify.description,
+        duration= content_modify.duration,
+        type= content_modify.type
+    )
+    updated_content = modify_content_query(new_modification, content_modify.id)
+    return updated_content
+   
