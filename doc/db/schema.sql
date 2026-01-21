@@ -4,7 +4,7 @@ SET NAMES utf8;
 SET time_zone = '+00:00';
 SET foreign_key_checks = 0;
 SET sql_mode = 'NO_AUTO_VALUE_ON_ZERO';
-CREATE DATABASE myapi;
+
 USE `myapi`;
 
 SET NAMES utf8mb4;
@@ -73,24 +73,28 @@ CREATE TABLE `PAYMENT` (
   `subscriptionId` varchar(255) NOT NULL,
   `paymentDate` date NOT NULL,
   `method` enum('card','paypal') NOT NULL,
-  `status` enum('pending','completed','failed') NOT NULL,
+  `status` enum('completed','pending','failed') NOT NULL,
   `amount` float NOT NULL,
   PRIMARY KEY (`id`),
   KEY `fk_pm_cliente` (`subscriptionId`),
   CONSTRAINT `fk_pm_cliente` FOREIGN KEY (`subscriptionId`) REFERENCES `SUBSCRIPTION` (`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_uca1400_ai_ci;
 
+INSERT INTO `PAYMENT` (`id`, `subscriptionId`, `paymentDate`, `method`, `status`, `amount`) VALUES
+('f75afcf7-6268-48f6-9b57-4b0fdf3c548d',	'd9b56de1-756d-425a-9eed-d4df13e36e0b',	'2026-01-21',	'card',	'completed',	14.59);
 
 DROP TABLE IF EXISTS `PROFILE`;
 CREATE TABLE `PROFILE` (
   `id` varchar(255) NOT NULL,
-  `userId` varchar(255) NOT NULL,
+  `userUsername` varchar(255) NOT NULL,
   `name` varchar(255) NOT NULL,
   PRIMARY KEY (`id`),
-  KEY `fk_profile_user` (`userId`),
-  CONSTRAINT `fk_profile_user` FOREIGN KEY (`userId`) REFERENCES `USER` (`id`) ON DELETE CASCADE
+  KEY `fk_profile_user` (`userUsername`),
+  CONSTRAINT `PROFILE_ibfk_1` FOREIGN KEY (`userUsername`) REFERENCES `USER` (`username`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_uca1400_ai_ci;
 
+INSERT INTO `PROFILE` (`id`, `userUsername`, `name`) VALUES
+('41980cc5-b029-40cb-99bf-63110a995676',	'gabriel',	'antuan');
 
 DROP TABLE IF EXISTS `RATING`;
 CREATE TABLE `RATING` (
@@ -107,16 +111,18 @@ CREATE TABLE `RATING` (
 DROP TABLE IF EXISTS `SUBSCRIPTION`;
 CREATE TABLE `SUBSCRIPTION` (
   `id` varchar(255) NOT NULL,
-  `userId` varchar(255) NOT NULL,
+  `userUsername` varchar(255) NOT NULL,
   `startDate` date NOT NULL,
   `endDate` date NOT NULL,
-  `status` enum('active','expired') NOT NULL,
+  `status` enum('pending','active','expired') NOT NULL,
   `type` enum('standard','premium','standard_yearly','premium_yearly') NOT NULL,
   PRIMARY KEY (`id`),
-  KEY `userId` (`userId`),
-  CONSTRAINT `SUBSCRIPTION_ibfk_1` FOREIGN KEY (`userId`) REFERENCES `USER` (`id`)
+  KEY `userId` (`userUsername`),
+  CONSTRAINT `SUBSCRIPTION_ibfk_1` FOREIGN KEY (`userUsername`) REFERENCES `USER` (`username`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_uca1400_ai_ci;
 
+INSERT INTO `SUBSCRIPTION` (`id`, `userUsername`, `startDate`, `endDate`, `status`, `type`) VALUES
+('d9b56de1-756d-425a-9eed-d4df13e36e0b',	'gabriel',	'2026-01-21',	'2026-02-21',	'active',	'premium');
 
 DROP TABLE IF EXISTS `SUPERUSER`;
 CREATE TABLE `SUPERUSER` (
@@ -126,6 +132,8 @@ CREATE TABLE `SUPERUSER` (
   CONSTRAINT `fk_superuser` FOREIGN KEY (`id`) REFERENCES `USER` (`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_uca1400_ai_ci;
 
+INSERT INTO `SUPERUSER` (`id`, `permissions`) VALUES
+('4add36b1-a9d1-438b-b2c7-d139beb3908e',	'total');
 
 DROP TABLE IF EXISTS `USER`;
 CREATE TABLE `USER` (
@@ -134,11 +142,12 @@ CREATE TABLE `USER` (
   `password` varchar(255) NOT NULL,
   `email` varchar(128) NOT NULL,
   `status` enum('active','inactive') NOT NULL,
-  PRIMARY KEY (`id`)
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uq_user_username` (`username`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_uca1400_ai_ci;
 
 INSERT INTO `USER` (`id`, `username`, `password`, `email`, `status`) VALUES
 ('38ed5fbe-f916-4d3c-8348-99e4591a2a53',	'string',	'$2b$12$y.WSlo5aPcegFDmzTrY2POpk9UiATjEUuBBgC9anACTzVbfa..N0i',	'string',	'active'),
 ('4add36b1-a9d1-438b-b2c7-d139beb3908e',	'gabriel',	'$2b$12$SHm3Cg6AWOKV3B8r9hQ4POUMdyzIa9Hyvh07xvoOeMQJumkGVvW4q',	'gabriel',	'active');
 
--- 2026-01-21 13:16:47 UTC
+-- 2026-01-21 16:36:03 UTC

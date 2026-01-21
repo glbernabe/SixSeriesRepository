@@ -32,7 +32,7 @@ class SubscriptionCreate(SubscriptionBase):
     pass
 class SubscriptionDb(SubscriptionCreate):
     id: str
-    user_id: str
+    user_username: str
     startdate: date
     endDate: date
     status: str
@@ -50,6 +50,12 @@ class PaymentCreate(BaseModel):
 class PaymentDb(BaseModel):
     id: str
     subscription_id: str
+    paymentDate: date
+    method: str
+    status: str
+    amount: float
+
+class PaymentOut(BaseModel):
     paymentDate: date
     method: str
     status: str
