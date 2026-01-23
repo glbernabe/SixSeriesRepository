@@ -135,9 +135,6 @@ def has_active_subscription(user_username:str, family:str) -> bool:
 def update_subscription_query(user_username:str, new_type:str, endDate:date) -> SubscriptionOut | None:
     with mariadb.connect(**db_config) as conn:
         with conn.cursor(dictionary=True) as cursor:
-
-            row = cursor.fetchone()
-            return row['count'] > 0
             sql = "UPDATE SUBSCRIPTION SET endDate = ?, type = ? WHERE userUsername = ?"
             cursor.execute(sql, (endDate, new_type, user_username))
             conn.commit()
@@ -172,6 +169,14 @@ def create_profile_query(user_username: str, name: str):
                 raise HTTPException(
                     status_code=status.HTTP_409_CONFLICT,
                     detail="User cannot have more than 5 profiles"
+                )
+            sql_limit = "SELECT name FROM PROFILE where userUsername = ?"
+            cursor.execute(sql_limit, (user_username,))
+            name_db = cursor.fetchone()[0]
+            if name_db == name:
+                raise HTTPException(
+                    status_code=status.HTTP_409_CONFLICT,
+                    detail="This profile already exists"
                 )
             sql_insert = "INSERT INTO PROFILE (id, userUsername, name) VALUES (?, ?, ?)"
             cursor.execute(sql_insert, (profile_id, user_username, name))
@@ -276,6 +281,22 @@ def confirm_payment_query(user_username, method:str) -> PaymentOut :
         return PaymentOut(
             paymentDate=paymentDate,
             method=method,
-            status="active",
             amount=amount
+        )
+def get_payments_query(user_username) -> PaymentOut:
+    with mariadb.connect(**db_config) as conn:
+        with conn.cursor(dictionary=True) as cursor:
+            sql_select = "SELECT id FROM SUBSCRIPTION WHERE userUsername = ?"
+            cursor.execute(sql_select,(user_username,))
+            row = cursor.fetchone()
+            if not row:
+                return None
+            SubscriptionId = row['id']
+            sql_select = "SELECT paymentDate, method, amount FROM PAYMENT WHERE subscriptionId = ?"
+            cursor.execute(sql_select, (SubscriptionId,))
+            row2 = cursor.fetchone()
+        return PaymentOut(
+            paymentDate=row2['paymentDate'],
+            method= row2['method'],
+            amount=row2['amount']
         )

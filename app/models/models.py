@@ -58,7 +58,6 @@ class PaymentDb(BaseModel):
 class PaymentOut(BaseModel):
     paymentDate: date
     method: str
-    status: str
     amount: float
 
 class ProfileDb(BaseModel):

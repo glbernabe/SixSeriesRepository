@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from starlette import status
 
 from app.auth.auth import TokenData, decode_token, oauth2_scheme
-from app.database import get_user_by_username, confirm_payment_query
+from app.database import get_user_by_username, confirm_payment_query, get_payments_query, get_subscription_query
 from app.models.models import PaymentOut
 
 router = APIRouter(
@@ -28,4 +28,17 @@ async def create_profile(method: str, token: str = Depends(oauth2_scheme)):
     payment = confirm_payment_query(user.username, method)
     return payment
 
-# Falta get pagos y obtener el status de la subscripcion, get my info by token, maybe delete users,
+@router.get("/me/", response_model=PaymentOut)
+async def get_payments(token: str = Depends(oauth2_scheme)):
+    data: TokenData = decode_token(token)
+    user = get_user_by_username(data.username)
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="User not found."
+        )
+    payments = get_payments_query(user.username)
+    return payments
+
+# obtener todos los pagos (solo admin)
+# falta funcion que devuelva el status general de una cuenta, tipo si es cliente, status de sub, plan, que dia expira etc...

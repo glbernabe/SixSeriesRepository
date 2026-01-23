@@ -29,7 +29,7 @@ async def create_profile(name: str, token: str = Depends(oauth2_scheme)):
     profile = create_profile_query(user.username, name)
     return profile
 
-@router.delete("/{profile_name}/", response_model=ProfileOut)
+@router.delete("/", response_model=ProfileOut)
 async def delete_profile(name: str, token: str = Depends(oauth2_scheme)):
     data: TokenData = decode_token(token)
     user = get_user_by_username(data.username)
@@ -41,7 +41,7 @@ async def delete_profile(name: str, token: str = Depends(oauth2_scheme)):
     deleteprofile = delete_profile_query(user.username, name)
     return deleteprofile
 
-@router.get("//", response_model=List[ProfileOut])
+@router.get("/{profile_id}/", response_model=List[ProfileOut])
 async def get_profiles(token: str = Depends(oauth2_scheme)):
     data: TokenData = decode_token(token)
     user = get_user_by_username(data.username)

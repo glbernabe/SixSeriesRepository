@@ -14,7 +14,7 @@ router = APIRouter(
     prefix="/subscription",
     tags=["Subscriptions"]
 )
-@router.post("/add/", response_model=SubscriptionBase, status_code=status.HTTP_200_OK)
+@router.post("/", response_model=SubscriptionBase, status_code=status.HTTP_200_OK)
 async def add_subscription(type: str, token: str = Depends(oauth2_scheme)):
     end_date = date.today()
     data: TokenData = decode_token(token)
@@ -54,7 +54,7 @@ async def add_subscription(type: str, token: str = Depends(oauth2_scheme)):
         status_code=status.HTTP_400_BAD_REQUEST,
         detail="Type must be one of: standard, premium, standard_yearly, premium_yearly"
     )
-@router.get("/{user_id}/", response_model=List[SubscriptionOut])
+@router.get("/me/", response_model=List[SubscriptionOut])
 def get_user_subscription(token: str = Depends(oauth2_scheme)):
     data: TokenData = decode_token(token)
     user = get_user_by_username(data.username)
@@ -67,7 +67,7 @@ def get_user_subscription(token: str = Depends(oauth2_scheme)):
     return subs
 
 
-@router.delete("/cancel/", response_model=SubscriptionOut)
+@router.delete("/me/", response_model=SubscriptionOut)
 def cancel_subscription(token: str = Depends(oauth2_scheme)):
     data: TokenData = decode_token(token)
     user = get_user_by_username(data.username)
@@ -98,7 +98,7 @@ def get_family(subtype: str) -> str:
         return "premium"
     return ""
 
-@router.put("/update/", response_model=SubscriptionOut)
+@router.put("/me/", response_model=SubscriptionOut)
 def update_subscription(new_type:str, token: str = Depends(oauth2_scheme)):
     end_date = date.today()
     data: TokenData = decode_token(token)
