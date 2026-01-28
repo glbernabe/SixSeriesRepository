@@ -8,10 +8,10 @@ from app.models.models import UserDb, SubscriptionDb, UserId, SubscriptionOut, P
 
 # ----------------------------- DATABASE CONFIG ---------------------------------
 db_config = {
-    "host": "myapidb",
+    "host": "localhost",
     "port": 3306,
-    "user": "myapi" ,
-    "password": "myapi" ,
+    "user": "root" ,
+    "password": "root" ,
     "database": "myapi"
 }
 # ----------------------------- USERS ----------------------------------------
@@ -38,6 +38,8 @@ def get_user_by_id(id_user: str):
             if row is None:
                 return None
             return UserDb(id=str(row[0]), username=row[1], password=row[2], email=row[3])
+        
+        
 def get_all_users_query():
     with mariadb.connect(**db_config) as conn:
         with conn.cursor() as cursor:

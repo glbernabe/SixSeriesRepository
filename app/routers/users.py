@@ -40,6 +40,7 @@ async def create_user(user_register: UserRegister):
     insert_user(new_user)
 
     return UserOut(id=new_user.id, username=new_user.username, email=new_user.email)
+    return UserOut(id=new_user.id, username=new_user.username, email=new_user.email)
 
 
 @router.post("/login/", response_model=Token, status_code=status.HTTP_200_OK)

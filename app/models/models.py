@@ -3,6 +3,9 @@ from datetime import date
 class UserBase(BaseModel):
     email: str
 
+class UserId(BaseModel):
+    id: str
+
 class UserRegister(UserBase):
     username: str
     password: str
