@@ -172,7 +172,8 @@ def create_profile_query(user_username: str, name: str):
                 )
             sql_limit = "SELECT name FROM PROFILE where userUsername = ?"
             cursor.execute(sql_limit, (user_username,))
-            name_db = cursor.fetchone()[0]
+            row = cursor.fetchone()
+            name_db = row[0]
             if name_db == name:
                 raise HTTPException(
                     status_code=status.HTTP_409_CONFLICT,

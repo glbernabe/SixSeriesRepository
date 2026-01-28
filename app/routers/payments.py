@@ -10,7 +10,7 @@ router = APIRouter(
     tags=["Payments"]
 )
 @router.post("/add/", response_model=PaymentOut)
-async def create_profile(method: str, token: str = Depends(oauth2_scheme)):
+async def confirm_payment(method: str, token: str = Depends(oauth2_scheme)):
     method_accept = {"card", "paypal"}
     data: TokenData = decode_token(token)
     user = get_user_by_username(data.username)
