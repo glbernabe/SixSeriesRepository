@@ -1,5 +1,8 @@
 from pydantic import BaseModel
 from datetime import date
+from enum import Enum
+from typing import Optional
+# -------------------- User Models --------------------
 class UserBase(BaseModel):
     email: str
 
@@ -70,3 +73,28 @@ class ProfileDb(BaseModel):
 
 class ProfileOut(BaseModel):
     name: str
+# -------------------- Content Models --------------------
+class ContentType(str, Enum):
+    series = "series"
+    movie = "movie"
+    documentary = "documentary"
+
+class ContentUser(BaseModel):
+    title: str
+    description: str
+    duration: int
+    age_rating: str
+    cover_url: str
+    video_url: str
+    type: ContentType
+
+class ContentDb(ContentUser):
+    id: str
+
+# -------------------- Gender Models --------------------
+
+class Genre(BaseModel):
+    id: str
+    name: str
+
+

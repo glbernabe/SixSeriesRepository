@@ -4,11 +4,10 @@ from fastapi import HTTPException
 import mariadb
 from starlette import status
 
-from app.models.models import UserDb, SubscriptionDb, UserId, SubscriptionOut, ProfileOut, PaymentOut
-
+from app.models.models import UserDb, SubscriptionDb, UserId, SubscriptionOut, ProfileOut, PaymentOut, ContentDb, ContentUser, Genre
 # ----------------------------- DATABASE CONFIG ---------------------------------
 db_config = {
-    "host": "localhost",
+    "host": "myapidb",
     "port": 3306,
     "user": "root" ,
     "password": "root" ,
@@ -144,7 +143,11 @@ def update_subscription_query(user_username:str, new_type:str, endDate:date) -> 
             sql_select = "SELECT type, startDate, endDate, status FROM SUBSCRIPTION WHERE userUsername = ? AND status = 'active' ORDER BY endDate DESC LIMIT 1"
             cursor.execute(sql_select, (user_username,))
             row = cursor.fetchone()
-
+            if row is None:
+                raise HTTPException(
+                    status_code=status.HTTP_404_NOT_FOUND,
+                    detail="Ypu dont have an active subscription"
+                )
         return SubscriptionOut(
             type=row['type'],
             startDate=row['startDate'],
@@ -303,3 +306,110 @@ def get_payments_query(user_username) -> PaymentOut:
             method= row2['method'],
             amount=row2['amount']
         )
+# Verificar que hay un superusuario con el nombre de usuario que se pasa
+def verify_superuser(username: str) -> bool | None:
+    with mariadb.connect(**db_config) as conn:
+        with conn.cursor() as cursor:
+
+            user = get_user_by_username(username)
+
+            sql = "SELECT id FROM `SUPERUSER` WHERE id = ?"
+            values = (user.id,)
+            cursor.execute(sql, values)
+
+            row = cursor.fetchone()
+
+            if not row:
+                raise HTTPException(403, "You are not allowed")
+
+
+# ---------------------- CONTENT ----------------------
+
+def get_all_content_query():
+    with mariadb.connect(**db_config) as conn:
+        with conn.cursor() as cursor:
+            sql = "SELECT * FROM CONTENT"
+            cursor.execute(sql)
+            rows = cursor.fetchall()
+
+            titles = []
+            for row in rows:
+                titles.append(row)
+            return titles
+
+
+def get_content_by_title_query(title: str):
+    with mariadb.connect(**db_config) as conn:
+        with conn.cursor() as cursor:
+            sql = sql = """
+                        SELECT title, description, duration, ageRating, coverUrl, videoUrl, type
+                        FROM CONTENT
+                        WHERE title = ?"""
+            values = (title,)
+            cursor.execute(sql, values)
+
+            row = cursor.fetchone()
+            if row:
+                return ContentUser(title=row[0], description=row[1], duration=row[2],
+                                   age_rating=row[3], cover_url=row[4], video_url=row[5],
+                                   type=row[6])
+            return None
+
+
+def create_content_query(content: ContentDb):
+    with mariadb.connect(**db_config) as conn:
+        with conn.cursor() as cursor:
+            sql = "INSERT INTO CONTENT (id, title, description, duration, ageRating, coverUrl, videoUrl, type) values (?,?,?,?,?,?,?,?)"
+            values = (content.id, content.title, content.description, content.duration, content.age_rating, content.cover_url, content.video_url, content.type)
+            cursor.execute(sql, values)
+            conn.commit()
+
+
+def modify_content_query(content: ContentUser, id_content: str):
+    with mariadb.connect(**db_config) as conn:
+        with conn.cursor() as cursor:
+            sql = "UPDATE CONTENT SET title=?, description=?, duration=?, ageRating=?, coverUrl=?, videoUrl=?, type=? WHERE id=?"
+            values = (content.title, content.description, content.duration, content.age_rating, content.cover_url, content.video_url, content.type, id_content)
+            cursor.execute(sql, values)
+
+            if cursor.rowcount == 0:
+                raise HTTPException(404, "Content not found")
+            conn.commit()
+            return get_content_by_title_query(content.title)
+
+# ---------------------- GENRE ----------------------
+def get_all_genres_query():
+    with mariadb.connect(**db_config) as conn:
+        with conn.cursor() as cursor:
+            sql = "SELECT name FROM GENRE"
+            cursor.execute(sql)
+            rows = cursor.fetchall()
+
+            if cursor.rowcount == 0:
+                raise HTTPException(404, "There are no genres")
+            conn.commit()
+            return rows
+
+def create_genre_query(new_genre: Genre):
+    verify_if_genre_exists(new_genre.name)
+
+    with mariadb.connect(**db_config) as conn:
+        with conn.cursor() as cursor:
+            sql = "INSERT INTO GENRE (id, name) values (?, ?)"
+            values = (new_genre.id, new_genre.name)
+            cursor.execute(sql, values)
+
+
+            conn.commit()
+
+
+
+def verify_if_genre_exists(name_genre: str):
+    with mariadb.connect(**db_config) as conn:
+        with conn.cursor() as cursor:
+            sql = "SELECT * FROM GENRE WHERE name = ?"
+            cursor.execute(sql, (name_genre,))
+            row = cursor.fetchone()
+
+            if row:
+                raise HTTPException(403, "Genre already exists")
