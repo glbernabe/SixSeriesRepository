@@ -9,7 +9,7 @@ router = APIRouter(
     tags=["Genre of Content"]
 )
 
-@router.get("/", response_model= list[str], status_code=status.HTTP_200_OK)
+@router.get("/", response_model= str, status_code=status.HTTP_200_OK)
 async def get_all_genres():
     rows = get_all_genres_query()
     return rows

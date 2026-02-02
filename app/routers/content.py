@@ -16,14 +16,7 @@ async def get_all_content():
     rows = get_all_content_query()
 
     return [
-        ContentUser(
-            title=row[0],
-            description=row[1],
-            duration=row[2],
-            age_rating=row[3],
-            cover_url=row[4],
-            video_url=row[5],
-            type=ContentType(row[6]))
+        ContentUser(**row)
         for row in rows
     ]
 

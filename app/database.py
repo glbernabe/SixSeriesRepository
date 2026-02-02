@@ -327,15 +327,21 @@ def verify_superuser(username: str) -> bool | None:
 
 def get_all_content_query():
     with mariadb.connect(**db_config) as conn:
-        with conn.cursor() as cursor:
-            sql = "SELECT * FROM CONTENT"
+        with conn.cursor(dictionary=True) as cursor:
+            sql = """
+                  SELECT
+                      title,
+                      description,
+                      duration,
+                      ageRating AS age_rating,
+                      coverUrl  AS cover_url,
+                      videoUrl  AS video_url,
+                      type
+                  FROM CONTENT \
+                  """
             cursor.execute(sql)
-            rows = cursor.fetchall()
+            return cursor.fetchall()
 
-            titles = []
-            for row in rows:
-                titles.append(row)
-            return titles
 
 
 def get_content_by_title_query(title: str):
@@ -383,12 +389,12 @@ def get_all_genres_query():
         with conn.cursor() as cursor:
             sql = "SELECT name FROM GENRE"
             cursor.execute(sql)
-            rows = cursor.fetchall()
+            row = str(cursor.fetchall())
 
             if cursor.rowcount == 0:
                 raise HTTPException(404, "There are no genres")
             conn.commit()
-            return rows
+            return row
 
 def create_genre_query(new_genre: Genre):
     verify_if_genre_exists(new_genre.name)
