@@ -419,3 +419,46 @@ def verify_if_genre_exists(name_genre: str):
 
             if row:
                 raise HTTPException(403, "Genre already exists")
+# ----------------------- FAVORITOS ----------------------------
+def add_favorite_query(content_name: str, user_name: str, addedDate: date):
+    with mariadb.connect(**db_config) as conn:
+        with conn.cursor() as cursor:
+            sql = "SELECT id FROM CONTENT WHERE title = ?"
+            cursor.execute(sql, (content_name,))
+            row = cursor.fetchone()
+            idContent = row[0]
+            if row is None:
+                raise HTTPException(
+                    status_code=status.HTTP_404_NOT_FOUND,
+                    detail="That content doesnt exist."
+                )
+            sql_profile = "SELECT id, userUsername, name FROM PROFILE WHERE userUsername = ?"
+            cursor.execute(sql_profile, (user_name,))
+            row1 = cursor.fetchone()
+            idProfile = row1[0]
+            sql_insert = "INSERT INTO FAVORITE (profileId, contentId, addedDate) values (?, ?, ?)"
+            values = (idProfile, idContent, addedDate)
+            cursor.execute(sql_insert, values)
+            conn.commit()
+            return {"Content name:": content_name,
+                    "AddedDate": addedDate}
+def remove_favorite_query(content_name:str, user_name: str):
+    with mariadb.connect(**db_config) as conn:
+        with conn.cursor() as cursor:
+            sql_select = "SELECT id FROM CONTENT WHERE title = ?"
+            cursor.execute(sql_select, (content_name,))
+            row = cursor.fetchone()
+            if row is None:
+                raise HTTPException(
+                    status_code=status.HTTP_404_NOT_FOUND,
+                    detail="That content doesnt exist."
+                )
+            idContent = row[0]
+            sql_profile = "SELECT id, userUsername, name FROM PROFILE WHERE userUsername = ?"
+            cursor.execute(sql_profile, (user_name,))
+            row1 = cursor.fetchone()
+            idProfile = row1[0]
+            sql = "DELETE FROM FAVORITE WHERE profileId = ? AND contentId = ?"
+            cursor.execute(sql, (idProfile, idContent,))
+            conn.commit()
+            return {"Content name deleted from favorites:": content_name}
