@@ -1,5 +1,5 @@
 from pydantic import BaseModel
-from datetime import date
+from datetime import date, datetime
 from enum import Enum
 from typing import Optional
 # -------------------- User Models --------------------
@@ -98,3 +98,26 @@ class Genre(BaseModel):
     name: str
 
 
+class RatingValue(str, Enum):
+    like = "like"
+    dislike = "dislike"
+    unrated = "unrated"
+
+class RatingCreate(BaseModel):
+    content_title: str
+    rating: RatingValue
+
+class RatingOut(BaseModel):
+    title: str
+    rating: RatingValue
+
+
+
+class HistoryCreate(BaseModel):
+    content_title: str
+    time_viewed: int
+
+class HistoryOut(BaseModel):
+    title: str
+    lastWatched: datetime
+    timeViewed: int

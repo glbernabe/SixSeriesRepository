@@ -4,7 +4,9 @@ from fastapi import HTTPException
 import mariadb
 from starlette import status
 
-from app.models.models import UserDb, SubscriptionDb, UserId, SubscriptionOut, ProfileOut, PaymentOut, ContentDb, ContentUser, Genre
+from app.models.models import UserDb, SubscriptionDb, UserId, SubscriptionOut, ProfileOut, PaymentOut, ContentDb, \
+    ContentUser, Genre, RatingValue
+
 # ----------------------------- DATABASE CONFIG ---------------------------------
 db_config = {
     "host": "myapidb",
@@ -66,7 +68,7 @@ def get_user_by_username(username: str) -> UserDb | None:
             return None
 
 # -------------------------- SUBSCRIPTION ---------------------------------
-from datetime import date
+from datetime import date, datetime
 import uuid
 
 def add_subscription_query(user_username: str, sub_type: str, end_date:date) -> dict:
@@ -462,3 +464,126 @@ def remove_favorite_query(content_name:str, user_name: str):
             cursor.execute(sql, (idProfile, idContent,))
             conn.commit()
             return {"Content name deleted from favorites:": content_name}
+
+# ------------------------ RATING -------------------------
+def rate_content_query(content_name:str, profile_name :str, RatingValue: RatingValue, username: str):
+    with mariadb.connect(**db_config) as conn:
+        with conn.cursor() as cursor:
+            sql_content = "SELECT id FROM CONTENT WHERE title = ?"
+            cursor.execute(sql_content, (content_name,))
+            row = cursor.fetchone()
+            if row is None:
+                raise HTTPException(
+                    status_code=status.HTTP_404_NOT_FOUND,
+                    detail="That content doesnt exist."
+                )
+            idContent = row[0]
+            sql_profile = """
+                          SELECT id
+                          FROM PROFILE
+                          WHERE name = ? AND userUsername = ? \
+                          """
+            cursor.execute(sql_profile, (profile_name, username))
+            row1 = cursor.fetchone()
+
+            if row1 is None:
+                raise HTTPException(
+                    status_code=status.HTTP_403_FORBIDDEN,
+                    detail="That profile does not belong to this user."
+                )
+            idProfile = row1[0]
+
+            sql_rating = """
+                         SELECT 1 FROM RATING
+                         WHERE profileId = ? AND contentId = ? \
+                         """
+            cursor.execute(sql_rating, (idProfile, idContent))
+            exists = cursor.fetchone()
+
+            if exists:
+                sql_update = """
+                             UPDATE RATING
+                             SET rating = ?
+                             WHERE profileId = ? AND contentId = ? \
+                             """
+                cursor.execute(
+                    sql_update,
+                    (RatingValue.value, idProfile, idContent)
+                )
+            else:
+                sql_insert = """
+                             INSERT INTO RATING (profileId, contentId, rating)
+                             VALUES (?, ?, ?) \
+                             """
+                cursor.execute(
+                    sql_insert,
+                    (idProfile, idContent, RatingValue.value)
+                )
+
+            conn.commit()
+
+def get_rates_query(profile_name :str, username: str):
+    with mariadb.connect(**db_config) as conn:
+        with conn.cursor() as cursor:
+            sql_profile = """
+                          SELECT id
+                          FROM PROFILE
+                          WHERE name = ? AND userUsername = ? \
+                          """
+        cursor.execute(sql_profile, (profile_name, username))
+        row1 = cursor.fetchone()
+
+        if row1 is None:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="That profile does not belong to this user."
+            )
+        idProfile = row1[0]
+        sql_select="SELECT * FROM RATING WHERE profileId = ?"
+        cursor.execute(sql_select, idProfile)
+
+        from datetime import datetime
+
+def upsert_history_query(profile_name: str, content_title: str, time_viewed: int):
+    with mariadb.connect(**db_config) as conn:
+        with conn.cursor() as cursor:
+
+            sql_profile = "SELECT id FROM PROFILE WHERE name = ?"
+            cursor.execute(sql_profile, (profile_name,))
+            row_profile = cursor.fetchone()
+            if not row_profile:
+                raise HTTPException(404, "Profile not found")
+            profile_id = row_profile[0]
+
+            sql_content = "SELECT id FROM CONTENT WHERE title = ?"
+            cursor.execute(sql_content, (content_title,))
+            row_content = cursor.fetchone()
+            if not row_content:
+                raise HTTPException(404, "Content not found")
+            content_id = row_content[0]
+
+            sql_check = """
+                        SELECT 1 FROM HISTORY
+                        WHERE profileId = ? AND contentId = ? \
+                        """
+            cursor.execute(sql_check, (profile_id, content_id))
+            exists = cursor.fetchone()
+
+            now = datetime.now()
+
+            if exists:
+                sql_update = """
+                             UPDATE HISTORY
+                             SET lastWatched = ?, timeViewed = ?
+                             WHERE profileId = ? AND contentId = ? \
+                             """
+                cursor.execute(sql_update, (now, time_viewed, profile_id, content_id))
+            else:
+                sql_insert = """
+                             INSERT INTO HISTORY (profileId, contentId, lastWatched, timeViewed)
+                             VALUES (?, ?, ?, ?) \
+                             """
+                cursor.execute(sql_insert, (profile_id, content_id, now, time_viewed))
+
+            conn.commit()
+
