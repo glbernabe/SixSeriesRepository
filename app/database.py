@@ -177,15 +177,20 @@ def create_profile_query(user_username: str, name: str):
                     status_code=status.HTTP_409_CONFLICT,
                     detail="User cannot have more than 5 profiles"
                 )
-            sql_limit = "SELECT name FROM PROFILE where userUsername = ?"
-            cursor.execute(sql_limit, (user_username,))
-            row = cursor.fetchone()
-            name_db = row[0]
-            if name_db == name:
+            sql_exists = """
+                         SELECT 1 FROM PROFILE
+                         WHERE userUsername = ? AND name = ? \
+                         """
+            cursor.execute(sql_exists, (user_username, name))
+            exists = cursor.fetchone()
+
+            if exists:
                 raise HTTPException(
                     status_code=status.HTTP_409_CONFLICT,
                     detail="This profile already exists"
                 )
+
+
             sql_insert = "INSERT INTO PROFILE (id, userUsername, name) VALUES (?, ?, ?)"
             cursor.execute(sql_insert, (profile_id, user_username, name))
             conn.commit()
@@ -198,10 +203,26 @@ def create_profile_query(user_username: str, name: str):
 def delete_profile_query(user_username: str, name:str):
     with mariadb.connect(**db_config) as conn:
         with conn.cursor() as cursor:
+            sql_exists = """
+                         SELECT 1 FROM PROFILE
+                         WHERE userUsername = ? AND name = ? \
+                         """
+            cursor.execute(sql_exists, (user_username, name))
+            exists = cursor.fetchone()
+
+            if not exists:
+                raise HTTPException(
+                    status_code=status.HTTP_409_CONFLICT,
+                    detail="This profile doesnt exists"
+                )
+
+            idProfile = exists[0]
             sql = "DELETE FROM PROFILE WHERE userUsername = ? AND name = ?"
             cursor.execute(sql, (user_username, name))
             conn.commit()
-
+            sql_history = "DELETE FROM HISTORY WHERE profileId = ?"
+            cursor.execute(sql_history, (idProfile,))
+            conn.commit()
             return {"name": name}
 def get_profiles_query(user_username: str):
     with mariadb.connect(**db_config) as conn:
@@ -522,27 +543,39 @@ def rate_content_query(content_name:str, profile_name :str, RatingValue: RatingV
 
             conn.commit()
 
-def get_rates_query(profile_name :str, username: str):
+def get_rates_query(profile_name: str, username: str):
     with mariadb.connect(**db_config) as conn:
         with conn.cursor() as cursor:
+
             sql_profile = """
                           SELECT id
                           FROM PROFILE
                           WHERE name = ? AND userUsername = ? \
                           """
-        cursor.execute(sql_profile, (profile_name, username))
-        row1 = cursor.fetchone()
+            cursor.execute(sql_profile, (profile_name, username))
+            row = cursor.fetchone()
 
-        if row1 is None:
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail="That profile does not belong to this user."
-            )
-        idProfile = row1[0]
-        sql_select="SELECT * FROM RATING WHERE profileId = ?"
-        cursor.execute(sql_select, idProfile)
+            if row is None:
+                raise HTTPException(
+                    status_code=status.HTTP_403_FORBIDDEN,
+                    detail="That profile does not belong to this user."
+                )
 
-        from datetime import datetime
+            idProfile = row[0]
+
+            sql = """
+                  SELECT c.title, r.rating
+                  FROM RATING r
+                           JOIN CONTENT c ON r.contentId = c.id
+                  WHERE r.profileId = ? \
+                  """
+            cursor.execute(sql, (idProfile,))
+            rates = cursor.fetchall()
+
+            return rates
+
+
+
 
 def upsert_history_query(profile_name: str, content_title: str, time_viewed: int):
     with mariadb.connect(**db_config) as conn:

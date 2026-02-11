@@ -87,7 +87,7 @@ async def get_all_users(token: str = Depends(oauth2_scheme)):
         UserOut(id=user_db.id, username=user_db.username, email=user_db.email)
         for user_db in users
     ]
-@router.get("/{getuser}/", response_model=UserOut, status_code=status.HTTP_200_OK)
+#@router.get("/{getuser}/", response_model=UserOut, status_code=status.HTTP_200_OK)
 async def get_user_by_username_endpoint(token: str = Depends(oauth2_scheme)):
     data: TokenData = decode_token(token)
     user = get_user_by_username(data.username)
