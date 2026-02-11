@@ -5,7 +5,7 @@ import mariadb
 from starlette import status
 
 from app.models.models import UserDb, SubscriptionDb, UserId, SubscriptionOut, ProfileOut, PaymentOut, ContentDb, \
-    ContentUser, Genre, RatingValue
+    ContentUser, Genre, RatingValue, UserOut
 
 # ----------------------------- DATABASE CONFIG ---------------------------------
 db_config = {
@@ -54,6 +54,28 @@ def get_all_users_query():
                     UserDb(id=row[0],username=row[1],password=row[2],email=row[3])
                 )
             return users
+def change_password_query(hashed: str, new_password: str, new_password_retype: str, username: str):
+    with mariadb.connect(**db_config) as conn:
+        with conn.cursor() as cursor:
+            sql = "SELECT id, username, password, email FROM USER WHERE username = ? "
+            cursor.execute(sql, (username,))
+            rows = cursor.fetchone()
+            passwd = rows[2]
+            if passwd == new_password:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="Your password is the same."
+                )
+            if new_password != new_password_retype:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="Password and password retype doesnt coincide.."
+                )
+            sql = "UPDATE USER SET password = ? WHERE username = ?"
+            cursor.execute(sql, (hashed, username))
+            conn.commit()
+
+            return {"message": "Password changed."}
 
 def get_user_by_username(username: str) -> UserDb | None:
     with mariadb.connect(**db_config) as conn:
@@ -237,7 +259,8 @@ def get_profiles_query(user_username: str):
                     ProfileOut(name=row[0])
                 )
             return names
-# ------------- SUPERUSER -------------------------------------
+
+# ------------------------ SUPERUSER -------------------------------------
 def get_superuser_permissions(user_id: str):
     with mariadb.connect(**db_config) as conn:
         with conn.cursor() as cursor:
