@@ -11,7 +11,7 @@ from dateutil.relativedelta import relativedelta
 from app.auth.auth import oauth2_scheme, TokenData, decode_token
 from app.database import get_user_by_username, add_subscription_query, get_subscription_query, \
     cancel_subscription_query, has_active_subscription, update_subscription_query, create_profile_query, \
-    delete_profile_query, get_profiles_query
+    delete_profile_query, get_profiles_query, change_profile_name_query
 from app.models.models import SubscriptionDb, UserId, SubscriptionBase, SubscriptionOut
 router = APIRouter(
     prefix="/users/profiles",
@@ -52,3 +52,12 @@ async def get_profiles(token: str = Depends(oauth2_scheme)):
         )
     getprofiles = get_profiles_query(user.username)
     return getprofiles
+@router.put("/profiles/change-name/")
+async def change_name_profile(old_name: str,new_name: str,token: str = Depends(oauth2_scheme)):
+    data: TokenData = decode_token(token)
+    user = get_user_by_username(data.username)
+
+    if not user:
+        raise HTTPException(404, "User not found")
+
+    return change_profile_name_query(user.username, old_name, new_name)

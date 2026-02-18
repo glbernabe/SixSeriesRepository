@@ -5,7 +5,7 @@ import mariadb
 from starlette import status
 
 from app.models.models import UserDb, SubscriptionDb, UserId, SubscriptionOut, ProfileOut, PaymentOut, ContentDb, \
-    ContentUser, Genre, RatingValue, UserOut
+    ContentUser, Genre, RatingValue, UserOut, HistoryOut, PaymentType
 
 # ----------------------------- DATABASE CONFIG ---------------------------------
 db_config = {
@@ -221,6 +221,39 @@ def create_profile_query(user_username: str, name: str):
             conn.commit()
 
             return {"name": name}
+def change_profile_name_query(user_username: str, old_name: str, new_name: str):
+    with mariadb.connect(**db_config) as conn:
+        with conn.cursor() as cursor:
+            sql_check = """
+                        SELECT id FROM PROFILE
+                        WHERE userUsername = ? AND name = ? \
+                        """
+            cursor.execute(sql_check, (user_username, old_name))
+            row = cursor.fetchone()
+            if not row:
+                raise HTTPException(
+                    status_code=404,
+                    detail="Profile not found"
+                )
+
+            sql_exists = """
+                         SELECT 1 FROM PROFILE
+                         WHERE userUsername = ? AND name = ? \
+                         """
+            cursor.execute(sql_exists, (user_username, new_name))
+            if cursor.fetchone():
+                raise HTTPException(
+                    status_code=409,
+                    detail="Profile name already exists"
+                )
+            sql_update = """
+                         UPDATE PROFILE
+                         SET name = ?
+                         WHERE userUsername = ? AND name = ? \
+                         """
+            cursor.execute(sql_update, (new_name, user_username, old_name))
+            conn.commit()
+            return {"old_name": old_name, "new_name": new_name}
 
 def delete_profile_query(user_username: str, name:str):
     with mariadb.connect(**db_config) as conn:
@@ -273,68 +306,74 @@ def get_superuser_permissions(user_id: str):
 
 
 # ------------ PAYMENTS -----------------
-def confirm_payment_query(user_username, method:str) -> PaymentOut :
+def confirm_payment_query(user_username, method: PaymentType) -> PaymentOut:
     id = str(uuid.uuid4())
     paymentDate = date.today()
+
     with mariadb.connect(**db_config) as conn:
         with conn.cursor() as cursor:
-            sql_select = "SELECT id, type, status FROM SUBSCRIPTION WHERE userUsername = ?"
-            cursor.execute(sql_select,(user_username,))
+
+            sql_select = """
+                         SELECT id, type, status
+                         FROM SUBSCRIPTION
+                         WHERE userUsername = ? \
+                         """
+            cursor.execute(sql_select, (user_username,))
             row = cursor.fetchone()
+
+            if not row:
+                raise HTTPException(
+                    status_code=status.HTTP_404_NOT_FOUND,
+                    detail="User does not have a subscription"
+                )
+
             SubscriptionId = row[0]
             Subscription_type = row[1]
             Subscription_status = row[2]
+
             if Subscription_status == "active":
                 raise HTTPException(
                     status_code=status.HTTP_400_BAD_REQUEST,
                     detail="You already have active the subscription"
                 )
-            #standard = 9.99
-            #standard_yearly = 99.99
-            #premium = 14.59
-            #premium_yearly = 140.59
-            if Subscription_type == "standard":
-                amount = 9.99
-                sql_insert = "INSERT INTO PAYMENT (id, subscriptionId, paymentDate, method, amount) VALUES (?,?,?,?,?)"
-                cursor.execute(sql_insert, (id, SubscriptionId, paymentDate, method,amount ))
-                conn.commit()
-                sql_update = "UPDATE SUBSCRIPTION SET status = 'active' WHERE userUsername = ?"
-                cursor.execute(sql_update,(user_username,))
-                conn.commit()
-            elif Subscription_type == "standard_yearly":
-                amount = 99.99
-                sql_insert = "INSERT INTO PAYMENT (id, subscriptionId, paymentDate, method, amount) VALUES (?,?,?,?,?)"
-                cursor.execute(sql_insert, (id, SubscriptionId, paymentDate, method,amount ))
-                conn.commit()
-                sql_update = "UPDATE SUBSCRIPTION SET status = 'active' WHERE userUsername = ?"
-                cursor.execute(sql_update,(user_username,))
-                conn.commit()
-            elif Subscription_type == "premium":
-                amount = 14.59
-                sql_insert = "INSERT INTO PAYMENT (id, subscriptionId, paymentDate, method, amount) VALUES (?,?,?,?,?)"
-                cursor.execute(sql_insert, (id, SubscriptionId, paymentDate, method,amount ))
-                conn.commit()
-                sql_update = "UPDATE SUBSCRIPTION SET status = 'active' WHERE userUsername = ?"
-                cursor.execute(sql_update,(user_username,))
-                conn.commit()
-            elif Subscription_type == "premium_yearly":
-                amount = 140.59
-                sql_insert = "INSERT INTO PAYMENT (id, subscriptionId, paymentDate, method, amount) VALUES (?,?,?,?,?)"
-                cursor.execute(sql_insert, (id, SubscriptionId, paymentDate, method,amount ))
-                conn.commit()
-                sql_update = "UPDATE SUBSCRIPTION SET status = 'active' WHERE userUsername = ?"
-                cursor.execute(sql_update,(user_username,))
-                conn.commit()
-            else:
+
+            price_map = {
+                "standard": 9.99,
+                "standard_yearly": 99.99,
+                "premium": 14.59,
+                "premium_yearly": 140.59
+            }
+
+            if Subscription_type not in price_map:
                 raise HTTPException(
                     status_code=status.HTTP_404_NOT_FOUND,
-                    detail="You dont have a Subscription"
+                    detail="Invalid subscription type"
                 )
-        return PaymentOut(
-            paymentDate=paymentDate,
-            method=method,
-            amount=amount
-        )
+
+            amount = price_map[Subscription_type]
+
+            sql_insert = """
+                         INSERT INTO PAYMENT
+                             (id, subscriptionId, paymentDate, method, amount)
+                         VALUES (?,?,?,?,?) \
+                         """
+            cursor.execute(sql_insert, (id, SubscriptionId, paymentDate, method, amount))
+
+            sql_update = """
+                         UPDATE SUBSCRIPTION
+                         SET status = 'active'
+                         WHERE id = ? \
+                         """
+            cursor.execute(sql_update, (SubscriptionId,))
+
+            conn.commit()
+
+    return PaymentOut(
+        paymentDate=paymentDate,
+        method=method,
+        amount=amount
+    )
+
 def get_payments_query(user_username) -> PaymentOut:
     with mariadb.connect(**db_config) as conn:
         with conn.cursor(dictionary=True) as cursor:
@@ -352,6 +391,34 @@ def get_payments_query(user_username) -> PaymentOut:
             method= row2['method'],
             amount=row2['amount']
         )
+def cancel_payment_query(payment_id: str, user_username: str):
+    with mariadb.connect(**db_config) as conn:
+        with conn.cursor() as cursor:
+
+            sql_check = """
+                        SELECT p.subscriptionId
+                        FROM PAYMENT p
+                                 JOIN SUBSCRIPTION s ON p.subscriptionId = s.id
+                        WHERE p.id = ? AND s.userUsername = ? \
+                        """
+            cursor.execute(sql_check, (payment_id, user_username))
+            row = cursor.fetchone()
+
+            if not row:
+                raise HTTPException(404, "Payment not found")
+
+            subscription_id = row[0]
+
+            sql_delete_subscription = """
+                                      DELETE FROM SUBSCRIPTION
+                                      WHERE id = ? \
+                                      """
+            cursor.execute(sql_delete_subscription, (subscription_id,))
+
+            conn.commit()
+
+            return {"payment_id": payment_id, "subscription_deleted": subscription_id}
+
 # Verificar que hay un superusuario con el nombre de usuario que se pasa
 def verify_superuser(username: str) -> bool | None:
     with mariadb.connect(**db_config) as conn:
@@ -428,6 +495,21 @@ def modify_content_query(content: ContentUser, id_content: str):
                 raise HTTPException(404, "Content not found")
             conn.commit()
             return get_content_by_title_query(content.title)
+
+def delete_content_query(content_id: str):
+    with mariadb.connect(**db_config) as conn:
+        with conn.cursor() as cursor:
+
+            sql_check = "SELECT 1 FROM CONTENT WHERE id = ?"
+            cursor.execute(sql_check, (content_id,))
+            if not cursor.fetchone():
+                raise HTTPException(404, "Content not found")
+
+            sql_delete = "DELETE FROM CONTENT WHERE id = ?"
+            cursor.execute(sql_delete, (content_id,))
+            conn.commit()
+
+            return {"deleted_content_id": content_id}
 
 # ---------------------- GENRE ----------------------
 def get_all_genres_query():
@@ -642,4 +724,33 @@ def upsert_history_query(profile_name: str, content_title: str, time_viewed: int
                 cursor.execute(sql_insert, (profile_id, content_id, now, time_viewed))
 
             conn.commit()
+
+def get_history_query(profile_name: str):
+    with mariadb.connect(**db_config) as conn:
+        with conn.cursor() as cursor:
+            sql_profile = "SELECT id FROM PROFILE WHERE name = ?"
+            cursor.execute(sql_profile, (profile_name,))
+            row_profile = cursor.fetchone()
+            if not row_profile:
+                raise HTTPException(status_code=404, detail="Profile not found")
+            profile_id = row_profile[0]
+            sql_select = """
+                         SELECT c.title, h.lastWatched, h.timeViewed
+                         FROM HISTORY h
+                                  JOIN CONTENT c ON h.contentId = c.id
+                         WHERE h.profileId = ? \
+                         """
+            cursor.execute(sql_select, (profile_id,))
+            rows = cursor.fetchall()
+
+            history = [
+                HistoryOut(
+                    title=row[0],
+                    lastWatched=row[1],
+                    timeViewed=row[2]
+                )
+                for row in rows
+            ]
+
+            return history
 
