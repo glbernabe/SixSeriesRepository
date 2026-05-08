@@ -1,10 +1,11 @@
 import uuid
+from datetime import date
 
 from fastapi import APIRouter, status, HTTPException, Depends
 
 from app.auth.auth import (oauth2_scheme, decode_token,TokenData)
 from app.database import create_content_query, get_all_content_query, verify_superuser, get_content_by_title_query, \
-    modify_content_query, get_user_by_username, delete_content_query
+    modify_content_query, get_user_by_username, delete_content_query, get_latest_content_query
 from app.models.models import ContentUser,ContentDb, ContentType
 from app.routers.users import require_permission
 
@@ -41,7 +42,9 @@ async def create_content(content: ContentUser, token: str = Depends(oauth2_schem
         cover_url= content.cover_url,
         description= content.description,
         duration= content.duration,
-        type= content.type
+        type= content.type,
+        releaseDate= content.releaseDate,
+        uploadDate = date.today()
     )
     create_content_query(new_content)
     raise HTTPException(201, "Content created.")
@@ -84,8 +87,18 @@ async def modify_content_query(content_modify: ContentDb, token: str = Depends(o
         cover_url= content_modify.cover_url,
         description= content_modify.description,
         duration= content_modify.duration,
-        type= content_modify.type
+        type= content_modify.type,
+        releaseDate= content_modify.releaseDate
     )
     updated_content = modify_content_query(new_modification, content_modify.id)
     return updated_content
-   
+
+@router.get("/", status_code=status.HTTP_200_OK)
+async def get_latest_content():
+    rows = get_latest_content_query()
+    if rows:
+        return rows
+    raise HTTPException(
+        status_code=status.HTTP_404_NOT_FOUND,
+        detail="Not found content."
+    )
