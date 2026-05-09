@@ -108,23 +108,24 @@ def add_subscription_query(user_username: str, sub_type: str, end_date:date) -> 
         "startDate": start_date,
         "endDate": end_date
     }
-def get_subscription_query(user_username: str) -> list[dict]:
+def get_subscription_query(user_username: str) -> dict | str:
     with mariadb.connect(**db_config) as conn:
         with conn.cursor() as cursor:
-            sql = "SELECT id,startDate, endDate, status, type FROM SUBSCRIPTION WHERE userUsername = ?"
+            sql = "SELECT id,startDate, endDate, status, type FROM SUBSCRIPTION WHERE userUsername = ? ORDER BY startDate DESC LIMIT 1"
             cursor.execute(sql, (user_username,))
-            results = cursor.fetchall()
-
-            subscription = []
-            for row in results:
-                subscription.append({
-                    "id": row[0],
-                    "startDate": row[1],
-                    "endDate": row[2],
-                    "status": row[3],
-                    "type": row[4]
-                })
-            return subscription
+            row = cursor.fetchone()
+            if row is None:
+                return "User doesnt hava a subscription yet."
+            end_date = row[2]
+            if end_date < date.today():
+                return "The subscription is inactive"
+            return {
+                "id": row[0],
+                "startDate": row[1],
+                "endDate": row[2],
+                "status": row[3],
+                "type": row[4]
+            }
 
 def cancel_subscription_query(user_username: str) -> SubscriptionOut | None:
     today = date.today()
