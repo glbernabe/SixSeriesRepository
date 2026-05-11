@@ -1,11 +1,9 @@
--- Adminer 5.4.0 MariaDB 12.0.2-MariaDB-ubu2404 dump
+- Adminer 5.4.2 MariaDB 12.2.2-MariaDB-ubu2404 dump
 
 SET NAMES utf8;
 SET time_zone = '+00:00';
 SET foreign_key_checks = 0;
 SET sql_mode = 'NO_AUTO_VALUE_ON_ZERO';
-
-USE `myapi`;
 
 SET NAMES utf8mb4;
 
@@ -14,13 +12,17 @@ CREATE TABLE `CONTENT` (
   `id` varchar(255) NOT NULL,
   `title` varchar(200) NOT NULL,
   `description` varchar(255) DEFAULT NULL,
-  `duration` int(11) NOT NULL,
+  `duration` time DEFAULT NULL,
   `ageRating` varchar(10) NOT NULL,
   `coverUrl` varchar(255) DEFAULT NULL,
   `videoUrl` varchar(255) DEFAULT NULL,
   `type` enum('series','movie','documentary') NOT NULL,
   PRIMARY KEY (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_uca1400_ai_ci;
+
+INSERT INTO `CONTENT` (`id`, `title`, `description`, `duration`, `ageRating`, `coverUrl`, `videoUrl`, `type`) VALUES
+('123',	'The Batman',	'En su segundo año luchando contra el crimen, Batman explora la corrupción en Gotham City.',	'02:56:00',	'16',	'https://m.media-amazon.com/images/M/MV5BZjJiYTliODMtNjM3MS00MzkxLWFlZGUtNmRmYWI1MzFlZmRiXkEyXkFqcGc@._V1_.jpg',	'https://streamimdb.ru/embed/movie/tt1877830',	'movie'),
+('333',	'Joker',	'La pasión de Arthur Fleck por hacer reír se convierte en una caída en el abismo de la locura.',	'02:02:00',	'18',	'https://blog.normacomics.com/wp-content/uploads/2021/10/Facepaint.jpeg',	'https://streamimdb.ru/embed/movie/tt7286456',	'movie');
 
 DROP TABLE IF EXISTS `FAVORITE`;
 CREATE TABLE `FAVORITE` (
@@ -112,17 +114,6 @@ CREATE TABLE `SUBSCRIPTION` (
 INSERT INTO `SUBSCRIPTION` (`id`, `userUsername`, `startDate`, `endDate`, `status`, `type`) VALUES
 ('d9b56de1-756d-425a-9eed-d4df13e36e0b',	'gabriel',	'2026-01-21',	'2026-02-21',	'active',	'premium');
 
-DROP TABLE IF EXISTS `SUPERUSER`;
-CREATE TABLE `SUPERUSER` (
-  `id` varchar(255) NOT NULL,
-  `permissions` enum('total','create','edit','read','none') NOT NULL,
-  PRIMARY KEY (`id`),
-  CONSTRAINT `fk_superuser` FOREIGN KEY (`id`) REFERENCES `USER` (`id`) ON DELETE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_uca1400_ai_ci;
-
-INSERT INTO `SUPERUSER` (`id`, `permissions`) VALUES
-('4add36b1-a9d1-438b-b2c7-d139beb3908e',	'total');
-
 DROP TABLE IF EXISTS `USER`;
 CREATE TABLE `USER` (
   `id` varchar(255) NOT NULL,
@@ -130,12 +121,15 @@ CREATE TABLE `USER` (
   `password` varchar(255) NOT NULL,
   `email` varchar(128) NOT NULL,
   `status` enum('active','inactive') NOT NULL,
+  `rol` enum('user','superuser') NOT NULL DEFAULT 'user',
+  `permissions` enum('total','create','edit','read','none') NOT NULL DEFAULT 'none',
   PRIMARY KEY (`id`),
   UNIQUE KEY `uq_user_username` (`username`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_uca1400_ai_ci;
 
-INSERT INTO `USER` (`id`, `username`, `password`, `email`, `status`) VALUES
-('38ed5fbe-f916-4d3c-8348-99e4591a2a53',	'string',	'$2b$12$y.WSlo5aPcegFDmzTrY2POpk9UiATjEUuBBgC9anACTzVbfa..N0i',	'string',	'active'),
-('4add36b1-a9d1-438b-b2c7-d139beb3908e',	'gabriel',	'$2b$12$SHm3Cg6AWOKV3B8r9hQ4POUMdyzIa9Hyvh07xvoOeMQJumkGVvW4q',	'gabriel',	'active');
+INSERT INTO `USER` (`id`, `username`, `password`, `email`, `status`, `rol`, `permissions`) VALUES
+('38ed5fbe-f916-4d3c-8348-99e4591a2a53',	'string',	'$2b$12$y.WSlo5aPcegFDmzTrY2POpk9UiATjEUuBBgC9anACTzVbfa..N0i',	'string',	'active',	'user',	'read'),
+('4add36b1-a9d1-438b-b2c7-d139beb3908e',	'gabriel',	'$2b$12$SHm3Cg6AWOKV3B8r9hQ4POUMdyzIa9Hyvh07xvoOeMQJumkGVvW4q',	'gabriel',	'active',	'user',	'read'),
+('cebe8df2-995a-4638-97b5-db16043868ec',	'Gerardas',	'$2b$12$weSAB03TC9fTp5tvtFsIe.76UK5/omJK/1kN7Z0wokIe/yXY1zU92',	'Gerardas',	'active',	'user',	'none');
 
--- 2026-01-21 16:36:03 UTC
+-- 2026-05-11 15:53:56 UTC

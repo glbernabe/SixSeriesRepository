@@ -25,7 +25,7 @@ async def create_user(user_register: UserRegister):
 
     if any(u.username == user_register.username for u in users):
         raise HTTPException(409, "Username already registered.")
-    if any(u.email == user_register.email for u in users):
+    if any(u.email == user_register.username for u in users):
         raise HTTPException(409, "Email already registered.")
 
     hashed = get_hash_password(user_register.password)
@@ -33,7 +33,7 @@ async def create_user(user_register: UserRegister):
     new_user = UserDb(
         id=str(uuid.uuid4()),
         username=user_register.username,
-        email=user_register.email,
+        email=user_register.username,
         password=hashed
     )
 
