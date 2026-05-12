@@ -1,4 +1,4 @@
-- Adminer 5.4.2 MariaDB 12.2.2-MariaDB-ubu2404 dump
+-- Adminer 5.4.2 MariaDB 12.2.2-MariaDB-ubu2404 dump
 
 SET NAMES utf8;
 SET time_zone = '+00:00';
@@ -17,12 +17,24 @@ CREATE TABLE `CONTENT` (
   `coverUrl` varchar(255) DEFAULT NULL,
   `videoUrl` varchar(255) DEFAULT NULL,
   `type` enum('series','movie','documentary') NOT NULL,
+  `logoURL` varchar(255) DEFAULT NULL,
+  `portraitURL` varchar(255) DEFAULT NULL,
   PRIMARY KEY (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_uca1400_ai_ci;
 
-INSERT INTO `CONTENT` (`id`, `title`, `description`, `duration`, `ageRating`, `coverUrl`, `videoUrl`, `type`) VALUES
-('123',	'The Batman',	'En su segundo año luchando contra el crimen, Batman explora la corrupción en Gotham City.',	'02:56:00',	'16',	'https://m.media-amazon.com/images/M/MV5BZjJiYTliODMtNjM3MS00MzkxLWFlZGUtNmRmYWI1MzFlZmRiXkEyXkFqcGc@._V1_.jpg',	'https://streamimdb.ru/embed/movie/tt1877830',	'movie'),
-('333',	'Joker',	'La pasión de Arthur Fleck por hacer reír se convierte en una caída en el abismo de la locura.',	'02:02:00',	'18',	'https://blog.normacomics.com/wp-content/uploads/2021/10/Facepaint.jpeg',	'https://streamimdb.ru/embed/movie/tt7286456',	'movie');
+INSERT INTO `CONTENT` (`id`, `title`, `description`, `duration`, `ageRating`, `coverUrl`, `videoUrl`, `type`, `logoURL`, `portraitURL`) VALUES
+('1000',	'Game of Thrones',	'Nobles familias luchan por el control del Trono de Hierro.',	'04:30:00',	'18',	'https://static.posters.cz/image/hp/65920.jpg',	'https://streamimdb.ru/embed/tv/tt0944947',	'series',	'https://1000logos.net/wp-content/uploads/2020/09/Game-of-Thrones-logo.png',	'https://static.posters.cz/image/1300/135456.jpg'),
+('1001',	'Avatar',	'Un marine parapléjico viaja al planeta Pandora y se une a los Na’vi.',	'02:42:00',	'13',	'https://wallpapercave.com/wp/wp9990039.jpg',	'https://streamimdb.ru/embed/movie/tt0499549',	'movie',	'https://upload.wikimedia.org/wikipedia/commons/thumb/f/f5/Avatar-Logo-avatar.svg/960px-Avatar-Logo-avatar.svg.png',	'https://m.media-amazon.com/images/M/MV5BMDEzMmQwZjctZWU2My00MWNlLWE0NjItMDJlYTRlNGJiZjcyXkEyXkFqcGc@._V1_.jpg'),
+('1002',	'Cosmos',	'Serie documental que explora el universo y los avances científicos.',	'00:50:00',	'7',	'https://danielmarin.naukas.com/files/2014/03/neil-dg-tyson-cosmos.jpg',	'https://streamimdb.ru/embed/tv/tt2395695',	'documentary',	'',	'https://pics.filmaffinity.com/cosmos_possible_worlds-589968652-mmed.jpg'),
+('1003',	'The Witcher',	'Un cazador de monstruos lucha por encontrar su lugar en un mundo brutal.',	'04:00:00',	'18',	'https://s29288.pcdn.co/wp-content/uploads/2020/01/the-witcher-season-1-poster-750x298-1.jpg',	'https://streamimdb.ru/embed/tv/tt5180504',	'series',	'https://upload.wikimedia.org/wikipedia/en/0/05/The_Witcher_Logo.png',	'https://m.media-amazon.com/images/I/81UJkXjkmyL.jpg'),
+('123',	'The Batman',	'En su segundo año luchando contra el crimen, Batman explora la corrupción existente en la ciudad de Gotham y el vínculo de esta con su propia familia. Además, entrará en conflicto con un asesino en serie conocido como \"el Acertijo\".',	'02:56:00',	'16',	'https://occ-0-8407-2218.1.nflxso.net/dnm/api/v6/6AYY37jfdO6hpXcMjf9Yu5cnmO0/AAAABRZGKb0WLE_o_W8uv5JFk7IO3NXuPlTCuWJs9lpDeq1cctUSf9dvwFJZMS4stKawVIqkfEqMZlWdTkmoOCTrtk2Hxf6SzXz2LhOx.jpg?r=55f',	'https://streamimdb.ru/embed/movie/tt1877830',	'movie',	'https://upload.wikimedia.org/wikipedia/commons/d/d1/The_Batman_2022_film_logo.png',	'https://es.web.img3.acsta.net/pictures/22/01/27/16/40/2914301.jpg'),
+('333',	'Joker',	'La pasión de Arthur Fleck, un hombre ignorado por la sociedad, es hacer reír a la gente. Sin embargo, una serie de trágicos sucesos harán que su visión del mundo se distorsione considerablemente convirtiéndolo en un brillante criminal.',	'02:02:00',	'18',	'https://i0.wp.com/rockandfilms.es/wp-content/uploads/2019/10/1-1.jpg?fit=1280%2C720&ssl=1',	'https://streamimdb.ru/embed/movie/tt7286456',	'movie',	'https://cdn.mos.cms.futurecdn.net/BSs2g8No7CFR7ACu4rbVxL.jpg',	'https://www.tallengestore.com/cdn/shop/products/Joker_-_Joaquin_Phoenix_-_Hollywood_Action_Movie_Poster_2_80c9c6bd-80ec-4670-ac85-c445e17a579f.jpg?v=1573629351'),
+('444',	'Breaking Bad',	'Un profesor de química diagnosticado con cáncer comienza a fabricar metanfetamina.',	'05:00:00',	'18',	'https://static.wikia.nocookie.net/eswikia/images/8/80/Breaking_Bad.png/revision/latest/scale-to-width-down/1600?cb=20160906023713',	'https://streamimdb.ru/embed/tv/tt0903747',	'series',	'https://upload.wikimedia.org/wikipedia/commons/thumb/7/77/Breaking_Bad_logo.svg/500px-Breaking_Bad_logo.svg.png',	'https://www.iamfy.co/cdn/shop/files/m_2Fx1000_2F223dbd30-fb38-4fd1-8724-c1817579e054.jpg?v=1760777206'),
+('555',	'Interstellar',	'Un grupo de exploradores viaja a través de un agujero de gusano en el espacio.',	'02:49:00',	'13',	'https://img.englishcinemamadrid.com/nKizXKvqQfZzAMBylGXBi7TuU37mFVp7Mb9phhtftSw/resize:fill:800:450:1:0/gravity:sm/aHR0cHM6Ly9leHBhdGNpbmVtYXByb2QuYmxvYi5jb3JlLndpbmRvd3MubmV0L2ltYWdlcy82MGMzNzFhMy0yNzQyLTQwZWYtYTQwOS1kMzE0NmI0YTNlNDQuanBn.jpg',	'https://streamimdb.ru/embed/movie/tt0816692',	'movie',	'https://upload.wikimedia.org/wikipedia/commons/thumb/b/b2/Interstellar-logo.jpg/250px-Interstellar-logo.jpg',	'https://m.media-amazon.com/images/M/MV5BYzdjMDAxZGItMjI2My00ODA1LTlkNzItOWFjMDU5ZDJlYWY3XkEyXkFqcGc@._V1_FMjpg_UX1000_.jpg'),
+('666',	'Planet Earth',	'Serie documental sobre la naturaleza y los ecosistemas del planeta Tierra.',	'01:00:00',	'7',	'https://hablandoenvidrio.com/wp-content/uploads/2020/03/planet-earth-ii-documental-sobre-el-planeta-1024x576.jpg',	'https://streamimdb.ru/embed/tv/tt0795176',	'documentary',	NULL,	'https://pics.filmaffinity.com/planet_earth-535384921-large.jpg'),
+('777',	'Stranger Things',	'Un grupo de niños descubre fenómenos sobrenaturales en su pequeño pueblo.',	'04:00:00',	'16',	'https://i.ytimg.com/vi/U9W85p8n-mE/maxresdefault.jpg',	'https://streamimdb.ru/embed/tv/tt4574334',	'series',	'https://upload.wikimedia.org/wikipedia/commons/3/38/Stranger_Things_logo.png',	'https://m.media-amazon.com/images/I/81SG03G+g7L._AC_UF894,1000_QL80_.jpg'),
+('888',	'Inception',	'Un ladrón especializado en robar secretos entra en los sueños de sus víctimas.',	'02:28:00',	'13',	'https://image.tmdb.org/t/p/original/rWDkbJlIyqN8KcqXajh9sZMwGzo.jpg',	'https://streamimdb.ru/embed/movie/tt1375666',	'movie',	'https://upload.wikimedia.org/wikipedia/commons/thumb/2/2e/Inception-wordmark.svg/3840px-Inception-wordmark.svg.png',	'https://www.originalfilmart.com/cdn/shop/files/inception_2010_advance_original_film_art_f4801a23-edb3-4db0-b382-1e2aec1dc927_5000x.jpg?v=1715962948'),
+('999',	'The Last Dance',	'Documental sobre Michael Jordan y la histórica temporada de los Chicago Bulls.',	'01:00:00',	'13',	'https://images.justwatch.com/backdrop/177080914/s640/the-last-dance.jpg',	'https://streamimdb.ru/embed/tv/tt8420184',	'documentary',	'https://upload.wikimedia.org/wikipedia/commons/1/15/Last_Dance_-_logo.png',	'https://i.redd.it/nbwcb0fz5l1d1.jpeg');
 
 DROP TABLE IF EXISTS `FAVORITE`;
 CREATE TABLE `FAVORITE` (
@@ -70,8 +82,6 @@ CREATE TABLE `PAYMENT` (
   CONSTRAINT `fk_pm_cliente` FOREIGN KEY (`subscriptionId`) REFERENCES `SUBSCRIPTION` (`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_uca1400_ai_ci;
 
-INSERT INTO `PAYMENT` (`id`, `subscriptionId`, `paymentDate`, `method`, `status`, `amount`) VALUES
-('f75afcf7-6268-48f6-9b57-4b0fdf3c548d',	'd9b56de1-756d-425a-9eed-d4df13e36e0b',	'2026-01-21',	'card',	'completed',	14.59);
 
 DROP TABLE IF EXISTS `PROFILE`;
 CREATE TABLE `PROFILE` (
@@ -83,8 +93,6 @@ CREATE TABLE `PROFILE` (
   CONSTRAINT `PROFILE_ibfk_1` FOREIGN KEY (`userUsername`) REFERENCES `USER` (`username`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_uca1400_ai_ci;
 
-INSERT INTO `PROFILE` (`id`, `userUsername`, `name`) VALUES
-('41980cc5-b029-40cb-99bf-63110a995676',	'gabriel',	'antuan');
 
 DROP TABLE IF EXISTS `RATING`;
 CREATE TABLE `RATING` (
@@ -111,8 +119,6 @@ CREATE TABLE `SUBSCRIPTION` (
   CONSTRAINT `SUBSCRIPTION_ibfk_1` FOREIGN KEY (`userUsername`) REFERENCES `USER` (`username`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_uca1400_ai_ci;
 
-INSERT INTO `SUBSCRIPTION` (`id`, `userUsername`, `startDate`, `endDate`, `status`, `type`) VALUES
-('d9b56de1-756d-425a-9eed-d4df13e36e0b',	'gabriel',	'2026-01-21',	'2026-02-21',	'active',	'premium');
 
 DROP TABLE IF EXISTS `USER`;
 CREATE TABLE `USER` (
@@ -127,9 +133,5 @@ CREATE TABLE `USER` (
   UNIQUE KEY `uq_user_username` (`username`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_uca1400_ai_ci;
 
-INSERT INTO `USER` (`id`, `username`, `password`, `email`, `status`, `rol`, `permissions`) VALUES
-('38ed5fbe-f916-4d3c-8348-99e4591a2a53',	'string',	'$2b$12$y.WSlo5aPcegFDmzTrY2POpk9UiATjEUuBBgC9anACTzVbfa..N0i',	'string',	'active',	'user',	'read'),
-('4add36b1-a9d1-438b-b2c7-d139beb3908e',	'gabriel',	'$2b$12$SHm3Cg6AWOKV3B8r9hQ4POUMdyzIa9Hyvh07xvoOeMQJumkGVvW4q',	'gabriel',	'active',	'user',	'read'),
-('cebe8df2-995a-4638-97b5-db16043868ec',	'Gerardas',	'$2b$12$weSAB03TC9fTp5tvtFsIe.76UK5/omJK/1kN7Z0wokIe/yXY1zU92',	'Gerardas',	'active',	'user',	'none');
 
--- 2026-05-11 15:53:56 UTC
+-- 2026-05-12 11:34:24 UTC

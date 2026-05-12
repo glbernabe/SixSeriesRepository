@@ -321,7 +321,9 @@ def get_all_content_query():
                       ageRating AS age_rating,
                       coverUrl  AS cover_url,
                       videoUrl  AS video_url,
-                      type
+                      type,
+                      logoUrl as logo_url,
+                      portraitUrl as portrait_url
                   FROM CONTENT \
                   """
             cursor.execute(sql)
@@ -333,7 +335,7 @@ def get_content_by_title_query(title: str):
     with mariadb.connect(**db_config) as conn:
         with conn.cursor() as cursor:
             sql = sql = """
-                        SELECT title, description, duration, ageRating, coverUrl, videoUrl, type
+                        SELECT title, description, duration, ageRating, coverUrl, videoUrl, type, logoUrl, portraitUrl
                         FROM CONTENT
                         WHERE title = ?"""
             values = (title,)
@@ -350,7 +352,7 @@ def get_content_by_title_query(title: str):
 def create_content_query(content: ContentDb):
     with mariadb.connect(**db_config) as conn:
         with conn.cursor() as cursor:
-            sql = "INSERT INTO CONTENT (id, title, description, duration, ageRating, coverUrl, videoUrl, type) values (?,?,?,?,?,?,?,?)"
+            sql = "INSERT INTO CONTENT (id, title, description, duration, ageRating, coverUrl, videoUrl, type, logoUrl, portraitUrl) values (?,?,?,?,?,?,?,?)"
             values = (content.id, content.title, content.description, content.duration, content.age_rating, content.cover_url, content.video_url, content.type)
             cursor.execute(sql, values)
             conn.commit()
@@ -359,7 +361,7 @@ def create_content_query(content: ContentDb):
 def modify_content_query(content: ContentUser, id_content: str):
     with mariadb.connect(**db_config) as conn:
         with conn.cursor() as cursor:
-            sql = "UPDATE CONTENT SET title=?, description=?, duration=?, ageRating=?, coverUrl=?, videoUrl=?, type=? WHERE id=?"
+            sql = "UPDATE CONTENT SET title=?, description=?, duration=?, ageRating=?, coverUrl=?, videoUrl=?, type=?, logoUrl=?, portraitUrl=? WHERE id=?"
             values = (content.title, content.description, content.duration, content.age_rating, content.cover_url, content.video_url, content.type, id_content)
             cursor.execute(sql, values)
 

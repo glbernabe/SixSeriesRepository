@@ -96,9 +96,11 @@ class ContentUser(BaseModel):
     description: str
     duration: time
     age_rating: str
-    cover_url: str
+    cover_url: str | None = None # La imagen del carusel en grande
     video_url: str
     type: ContentType
+    logo_url: str | None = None # La imagen del logo en el carusel
+    portrait_url: str | None = None # La imagen que siempre tiene que tener
 
     #MariaDB hace llegar un 'timedelta' y entonces antes de llegar, lo pasamos a 'time' HH:MM:SS
     @field_validator("duration", mode="before")
