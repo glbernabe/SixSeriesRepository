@@ -39,8 +39,8 @@ def get_user_by_id(id_user: str):
             if row is None:
                 return None
             return UserDb(id=str(row[0]), username=row[1], password=row[2], email=row[3])
-        
-        
+
+
 def get_all_users_query():
     with mariadb.connect(**db_config) as conn:
         with conn.cursor() as cursor:
@@ -136,10 +136,11 @@ def cancel_subscription_query(user_username: str) -> SubscriptionOut | None:
             conn.commit()
             if cursor.rowcount == 0:
                 return None
-            sql_select = "SELECT type, startDate, endDate, status FROM SUBSCRIPTION WHERE userUsername = ? AND status = 'expired' ORDER BY endDate DESC LIMIT 1"
+            sql_select = "SELECT id, type, startDate, endDate, status FROM SUBSCRIPTION WHERE userUsername = ? AND status = 'expired' ORDER BY endDate DESC LIMIT 1"
             cursor.execute(sql_select, (user_username,))
             row = cursor.fetchone()
         return SubscriptionOut(
+            id=row['id'],
             type=row['type'],
             startDate=row['startDate'],
             endDate=row['endDate'],
@@ -148,15 +149,11 @@ def cancel_subscription_query(user_username: str) -> SubscriptionOut | None:
 
 def has_active_subscription(user_username:str, family:str) -> bool:
     with mariadb.connect(**db_config) as conn:
-        with conn.cursor() as cursor:
-            with conn.cursor(dictionary=True) as cursor:
-                sql = "SELECT COUNT(*) as count FROM SUBSCRIPTION WHERE userUsername = ? AND status = 'active' AND (type = ? OR type = ?)"
-                if family == "standard":
-                    cursor.execute(sql, (user_username, "standard", "standard_yearly"))
-                else:
-                    cursor.execute(sql, (user_username, "premium", "premium_yearly"))
-                row = cursor.fetchone()
-                return row['count'] > 0
+        with conn.cursor(dictionary=True) as cursor:
+            sql = "SELECT COUNT(*) as count FROM SUBSCRIPTION WHERE userUsername = ? AND status IN ('active', 'pending')"
+            cursor.execute(sql, (user_username,))
+            row = cursor.fetchone()
+            return row['count'] > 0
 
 def update_subscription_query(user_username:str, new_type:str, endDate:date) -> SubscriptionOut | None:
     with mariadb.connect(**db_config) as conn:
@@ -165,15 +162,16 @@ def update_subscription_query(user_username:str, new_type:str, endDate:date) -> 
             cursor.execute(sql, (endDate, new_type, user_username))
             conn.commit()
 
-            sql_select = "SELECT type, startDate, endDate, status FROM SUBSCRIPTION WHERE userUsername = ? AND status = 'active' ORDER BY endDate DESC LIMIT 1"
+            sql_select = "SELECT id, type, startDate, endDate, status FROM SUBSCRIPTION WHERE userUsername = ? AND status = 'active' ORDER BY endDate DESC LIMIT 1"
             cursor.execute(sql_select, (user_username,))
             row = cursor.fetchone()
             if row is None:
                 raise HTTPException(
                     status_code=status.HTTP_404_NOT_FOUND,
-                    detail="Ypu dont have an active subscription"
+                    detail="You don't have an active subscription"
                 )
         return SubscriptionOut(
+            id=row['id'],
             type=row['type'],
             startDate=row['startDate'],
             endDate=row['endDate'],
@@ -320,8 +318,7 @@ def get_superuser_permissions(user_id: str):
 
 
 # ------------ PAYMENTS -----------------
-def confirm_payment_query(user_username, method: PaymentType) -> PaymentOut:
-    id = str(uuid.uuid4())
+def confirm_payment_query(user_username: str, method: PaymentType, subscription_id: str) -> PaymentOut:
     paymentDate = date.today()
 
     with mariadb.connect(**db_config) as conn:
@@ -330,25 +327,29 @@ def confirm_payment_query(user_username, method: PaymentType) -> PaymentOut:
             sql_select = """
                          SELECT id, type, status
                          FROM SUBSCRIPTION
-                         WHERE userUsername = ? \
+                         WHERE id = ? AND userUsername = ?
                          """
-            cursor.execute(sql_select, (user_username,))
+            cursor.execute(sql_select, (subscription_id, user_username))
             row = cursor.fetchone()
 
             if not row:
                 raise HTTPException(
                     status_code=status.HTTP_404_NOT_FOUND,
-                    detail="User does not have a subscription"
+                    detail="Subscription not found for this user"
                 )
 
-            SubscriptionId = row[0]
-            Subscription_type = row[1]
-            Subscription_status = row[2]
+            sub_id, sub_type, sub_status = row
 
-            if Subscription_status == "active":
+            if sub_status == "active":
                 raise HTTPException(
                     status_code=status.HTTP_400_BAD_REQUEST,
-                    detail="You already have active the subscription"
+                    detail="This subscription is already active"
+                )
+
+            if sub_status == "expired":
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="This subscription has already expired"
                 )
 
             price_map = {
@@ -358,27 +359,24 @@ def confirm_payment_query(user_username, method: PaymentType) -> PaymentOut:
                 "premium_yearly": 140.59
             }
 
-            if Subscription_type not in price_map:
+            if sub_type not in price_map:
                 raise HTTPException(
-                    status_code=status.HTTP_404_NOT_FOUND,
-                    detail="Invalid subscription type"
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail=f"Invalid subscription type: {sub_type}"
                 )
 
-            amount = price_map[Subscription_type]
+            amount = price_map[sub_type]
+            payment_id = str(uuid.uuid4())
 
             sql_insert = """
                          INSERT INTO PAYMENT
                              (id, subscriptionId, paymentDate, method, amount)
-                         VALUES (?,?,?,?,?) \
+                         VALUES (?, ?, ?, ?, ?)
                          """
-            cursor.execute(sql_insert, (id, SubscriptionId, paymentDate, method, amount))
+            cursor.execute(sql_insert, (payment_id, sub_id, paymentDate, method, amount))
 
-            sql_update = """
-                         UPDATE SUBSCRIPTION
-                         SET status = 'active'
-                         WHERE id = ? \
-                         """
-            cursor.execute(sql_update, (SubscriptionId,))
+            sql_update = "UPDATE SUBSCRIPTION SET status = 'active' WHERE id = ?"
+            cursor.execute(sql_update, (sub_id,))
 
             conn.commit()
 
@@ -790,4 +788,3 @@ def get_latest_content_query():
                 else:
                     break
             return resultados[:10]
-

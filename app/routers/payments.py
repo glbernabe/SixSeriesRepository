@@ -11,8 +11,7 @@ router = APIRouter(
     tags=["Payments"]
 )
 @router.post("/add/", response_model=PaymentOut)
-async def confirm_payment(method: PaymentType, token: str = Depends(oauth2_scheme)):
-    method_accept = {"card", "paypal"}
+async def confirm_payment(subscription_id: str, method: PaymentType, token: str = Depends(oauth2_scheme)):
     data: TokenData = decode_token(token)
     user = get_user_by_username(data.username)
     if not user:
@@ -20,14 +19,7 @@ async def confirm_payment(method: PaymentType, token: str = Depends(oauth2_schem
             status_code=status.HTTP_404_NOT_FOUND,
             detail="User not found."
         )
-    method_lower = method.lower()
-    if method_lower not in method_accept:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="The options are card o paypal"
-        )
-    payment = confirm_payment_query(user.username, method)
-    return payment
+    return confirm_payment_query(user.username, method, subscription_id)
 
 @router.get("/me/", response_model=PaymentOut)
 async def get_payments(token: str = Depends(oauth2_scheme)):

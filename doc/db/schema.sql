@@ -21,7 +21,7 @@ CREATE TABLE `CONTENT` (
                            `id` varchar(255) NOT NULL,
                            `title` varchar(200) NOT NULL,
                            `description` varchar(255) DEFAULT NULL,
-                           `duration` int(11) NOT NULL,
+                           `duration` time NOT NULL,
                            `ageRating` varchar(10) NOT NULL,
                            `coverUrl` varchar(255) DEFAULT NULL,
                            `videoUrl` varchar(255) DEFAULT NULL,

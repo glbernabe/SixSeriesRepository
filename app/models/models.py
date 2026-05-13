@@ -50,6 +50,7 @@ class SubscriptionDb(SubscriptionCreate):
     type: str
 
 class SubscriptionOut(BaseModel):
+    id: str
     type: str
     startDate: date
     endDate: date
@@ -90,7 +91,7 @@ class ContentType(str, Enum):
 class ContentUser(BaseModel):
     title: str
     description: str
-    duration: int
+    duration: str
     age_rating: str
     cover_url: str
     video_url: str
@@ -131,6 +132,3 @@ class HistoryOut(BaseModel):
     title: str
     lastWatched: datetime
     timeViewed: int
-
-
-

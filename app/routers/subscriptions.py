@@ -14,7 +14,7 @@ router = APIRouter(
     prefix="/subscription",
     tags=["Subscriptions"]
 )
-@router.post("/", response_model=SubscriptionBase, status_code=status.HTTP_200_OK)
+@router.post("/", status_code=status.HTTP_201_CREATED)
 async def add_subscription(type: str, token: str = Depends(oauth2_scheme)):
     end_date = date.today()
     data: TokenData = decode_token(token)
@@ -39,7 +39,7 @@ async def add_subscription(type: str, token: str = Depends(oauth2_scheme)):
     if has_active_subscription(user.username, family):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"You already have a subscription, you must update your subscription"
+            detail="You already have an active or pending subscription. Cancel it or wait for it to expire before creating a new one."
         )
     if type_lower in weekly_type:
         end_date += relativedelta(months=1)
