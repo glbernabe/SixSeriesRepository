@@ -20,7 +20,7 @@ class Token(BaseModel):
 
 class TokenData(BaseModel):
     username: str | None = None
-
+    rol: str | None = None
 
 def get_hash_password(plain_pw: str) -> str:
     pw_bytes = plain_pw.encode("utf-8")
@@ -37,7 +37,7 @@ def verify_password(plain_pw, hashed_pw) -> bool:
 
 def create_access_token(user: UserBase) -> Token:
     expire = datetime.utcnow() + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MIN)
-    to_encode = {"sub": user.username,"exp": expire}
+    to_encode = {"sub": user.username,"role": user.rol, "exp": expire}
     encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
     return Token(access_token=encoded_jwt, token_type="bearer")
 
@@ -47,10 +47,21 @@ def decode_token(token: str) -> TokenData:
         payload: dict = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
         return TokenData(
             username=payload.get("sub"),
+            rol=payload.get("role")
         )
     except JWTError:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Could not validate credentials",
+            headers={"WWW-Authenticate": "Bearer"}
+        )
+    
+def only_superuser(token: str) -> TokenData:
+    data = decode_token(token)
+
+    if data.rol != "superuser":
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail= "No tienes acceso a estas funciones.",
             headers={"WWW-Authenticate": "Bearer"}
         )

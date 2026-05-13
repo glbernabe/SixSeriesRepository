@@ -34,7 +34,9 @@ async def create_content(content: ContentUser, token: str = Depends(oauth2_schem
         cover_url= content.cover_url,
         description= content.description,
         duration= content.duration,
-        type= content.type
+        type= content.type,
+        logo_url= content.logo_url,
+        portrait_url= content.portrait_url
     )
     create_content_query(new_content)
     raise HTTPException(201, "Content created.")
@@ -62,7 +64,9 @@ async def modify_content_query(content_modify: ContentDb, token: str = Depends(o
         cover_url= content_modify.cover_url,
         description= content_modify.description,
         duration= content_modify.duration,
-        type= content_modify.type
+        type= content_modify.type,
+        logo_url= content_modify.logo_url,
+        portrait_url = content_modify.portrait_url
     )
     updated_content = modify_content_query(new_modification, content_modify.id)
     return updated_content
