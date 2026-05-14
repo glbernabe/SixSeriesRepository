@@ -11,7 +11,7 @@ from app.auth.auth import (
     TokenData, get_hash_password
 )
 from app.database import insert_user, get_user_by_id, get_all_users_query, get_user_by_username, \
-    get_superuser_permissions
+    get_superuser_permissions, change_password_query
 from app.models.models import UserDb, UserRegister, UserOut
 
 router = APIRouter(
@@ -87,7 +87,7 @@ async def get_all_users(token: str = Depends(oauth2_scheme)):
         UserOut(id=user_db.id, username=user_db.username, email=user_db.email)
         for user_db in users
     ]
-@router.get("/{getuser}/", response_model=UserOut, status_code=status.HTTP_200_OK)
+#@router.get("/{getuser}/", response_model=UserOut, status_code=status.HTTP_200_OK)
 async def get_user_by_username_endpoint(token: str = Depends(oauth2_scheme)):
     data: TokenData = decode_token(token)
     user = get_user_by_username(data.username)
@@ -111,3 +111,16 @@ def require_permission(user_id: str, required: str):
             detail="Insufficient permissions"
         )
     return True
+@router.put("/", status_code=status.HTTP_200_OK)
+def change_password(new_password: str, new_password_retype: str, token: str = Depends(oauth2_scheme)):
+    data: TokenData = decode_token(token)
+    user = get_user_by_username(data.username)
+    if user is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="User not found"
+        )
+    hashed = get_hash_password(new_password)
+    change_password_query(hashed, new_password, new_password_retype, user.username)
+    return "Password changed"
+
