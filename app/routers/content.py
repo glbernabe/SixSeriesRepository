@@ -1,10 +1,13 @@
 import uuid
+from datetime import date
 
 from fastapi import APIRouter, status, HTTPException, Depends
 
 from app.auth.auth import (oauth2_scheme, decode_token,TokenData)
-from app.database import create_content_query, get_all_content_query, verify_superuser,get_content_by_title_query, modify_content_query
+from app.database import create_content_query, get_all_content_query, verify_superuser, get_content_by_title_query, \
+    modify_content_query, get_user_by_username, delete_content_query, get_latest_content_query
 from app.models.models import ContentUser,ContentDb, ContentType
+from app.routers.users import require_permission
 
 router = APIRouter(
     prefix="/contents",
@@ -23,7 +26,12 @@ async def get_all_content():
 @router.post("/", status_code=status.HTTP_201_CREATED)
 async def create_content(content: ContentUser, token: str = Depends(oauth2_scheme)):
     data: TokenData = decode_token(token)
-
+    user = get_user_by_username(data.username)
+    if not (require_permission(user.id, "total") or require_permission(user.id, "create")):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Not enough permissions."
+        )
     verify_superuser(data.username)
 
     new_content = ContentDb(
@@ -36,7 +44,9 @@ async def create_content(content: ContentUser, token: str = Depends(oauth2_schem
         duration= content.duration,
         type= content.type,
         logo_url= content.logo_url,
-        portrait_url= content.portrait_url
+        portrait_url= content.portrait_url,
+        releaseDate= content.releaseDate,
+        uploadDate = date.today()
     )
     create_content_query(new_content)
     raise HTTPException(201, "Content created.")
@@ -51,11 +61,26 @@ async def get_content_by_title(title: str):
         status_code=status.HTTP_404_NOT_FOUND,
         detail="This title has not been found."
     )
+@router.delete("/content/{content_id}")
+async def delete_content(
+        content_id: str,
+        token: str = Depends(oauth2_scheme)
+):
+    data: TokenData = decode_token(token)
+    verify_superuser(data.username)
+
+    return delete_content_query(content_id)
 
 @router.put("/", status_code=status.HTTP_200_OK)
 async def modify_content_query(content_modify: ContentDb, token: str = Depends(oauth2_scheme)):
     data: TokenData = decode_token(token)
     verify_superuser(data.username)
+    user = get_user_by_username(data.username)
+    if not (require_permission(user.id, "edit") or require_permission(user.id, "total")):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Not enough permissions."
+        )
         # Se utiliza el ContentUser para que no se pueda cambiar el UUID, ya que no se debería de tocar
     new_modification = ContentUser(
         title= content_modify.title,
@@ -66,8 +91,18 @@ async def modify_content_query(content_modify: ContentDb, token: str = Depends(o
         duration= content_modify.duration,
         type= content_modify.type,
         logo_url= content_modify.logo_url,
-        portrait_url = content_modify.portrait_url
+        portrait_url = content_modify.portrait_url,
+        releaseDate= content_modify.releaseDate
     )
     updated_content = modify_content_query(new_modification, content_modify.id)
     return updated_content
-   
+
+@router.get("/", status_code=status.HTTP_200_OK)
+async def get_latest_content():
+    rows = get_latest_content_query()
+    if rows:
+        return rows
+    raise HTTPException(
+        status_code=status.HTTP_404_NOT_FOUND,
+        detail="Not found content."
+    )

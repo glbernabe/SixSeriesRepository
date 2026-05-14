@@ -1,5 +1,5 @@
 from pydantic import BaseModel, field_validator
-from datetime import date, time, timedelta
+from datetime import date, timedelta, datetime, time
 from enum import Enum
 from typing import Optional
 
@@ -14,6 +14,9 @@ class PermissionsUserEnum(str, Enum):
     read = "read"
     none = "none"
     
+
+class RatingValue(str, Enum): pass
+
 # -------------------- User Models --------------------
 class UserBase(BaseModel):
     username: str
@@ -54,6 +57,7 @@ class SubscriptionDb(SubscriptionCreate):
     type: str
 
 class SubscriptionOut(BaseModel):
+    id: str
     type: str
     startDate: date
     endDate: date
@@ -71,10 +75,12 @@ class PaymentDb(BaseModel):
     method: str
     status: str
     amount: float
-
+class PaymentType(str, Enum):
+    paypal = "paypal"
+    card = "card"
 class PaymentOut(BaseModel):
     paymentDate: date
-    method: str
+    method: PaymentType
     amount: float
 
 # -------------------- Profile Models --------------------
@@ -82,9 +88,12 @@ class ProfileDb(BaseModel):
     id: str
     user_id: str
     name: str
+    profileColor: str | None = None
 
 class ProfileOut(BaseModel):
     name: str
+    profileColor: str | None = None
+    
 # -------------------- Content Models --------------------
 class ContentType(str, Enum):
     series = "series"
@@ -113,6 +122,8 @@ class ContentUser(BaseModel):
             seconds = total_seconds % 60
             return time(hour=hours, minute=minutes, second=seconds)
         return v
+    uploadDate: Optional[date]
+    releaseDate: date
 
 class ContentDb(ContentUser):
     id: str
@@ -124,3 +135,26 @@ class Genre(BaseModel):
     name: str
 
 
+class RatingValue(str, Enum):
+    like = "like"
+    dislike = "dislike"
+    unrated = "unrated"
+
+class RatingCreate(BaseModel):
+    content_title: str
+    rating: RatingValue
+
+class RatingOut(BaseModel):
+    title: str
+    rating: RatingValue
+
+
+
+class HistoryCreate(BaseModel):
+    content_title: str
+    time_viewed: int
+
+class HistoryOut(BaseModel):
+    title: str
+    lastWatched: datetime
+    timeViewed: int
