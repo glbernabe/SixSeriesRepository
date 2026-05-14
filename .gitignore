@@ -4,7 +4,10 @@ venv/
 env/
 
 # Python compilado
-**/__pycache__/
+__pycache__/
+*.pyc
+app/**/__pycache__/
+app/routers/__pycache__/
 *.pyc
 
 # IDEs
