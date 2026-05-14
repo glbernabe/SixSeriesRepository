@@ -3,13 +3,14 @@ from app.models.models import Genre
 from app.auth.auth import (oauth2_scheme, decode_token,TokenData)
 from app.database import get_all_genres_query, verify_superuser, create_genre_query
 import uuid
+from typing import List
 
 router = APIRouter(
     prefix="/genres",
     tags=["Genre of Content"]
 )
 
-@router.get("/", response_model= str, status_code=status.HTTP_200_OK)
+@router.get("/", response_model= List[Genre], status_code=status.HTTP_200_OK)
 async def get_all_genres():
     rows = get_all_genres_query()
     return rows

@@ -373,10 +373,10 @@ def modify_content_query(content: ContentUser, id_content: str):
 # ---------------------- GENRE ----------------------
 def get_all_genres_query():
     with mariadb.connect(**db_config) as conn:
-        with conn.cursor() as cursor:
-            sql = "SELECT name FROM GENRE"
+        with conn.cursor(dictionary = True) as cursor:
+            sql = "SELECT id, name FROM GENRE"
             cursor.execute(sql)
-            row = str(cursor.fetchall())
+            row = cursor.fetchall()
 
             if cursor.rowcount == 0:
                 raise HTTPException(404, "There are no genres")
