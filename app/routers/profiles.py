@@ -1,72 +1,39 @@
 from fastapi import APIRouter
 
 from app.models.models import ProfileOut
-from datetime import date
 from typing import List
 
 from fastapi import APIRouter, Depends, HTTPException
-from starlette import status
-from dateutil.relativedelta import relativedelta
 
-from app.auth.auth import oauth2_scheme, TokenData, decode_token
-from app.database import get_user_by_username, add_subscription_query, get_subscription_query, \
-    cancel_subscription_query, has_active_subscription, update_subscription_query, create_profile_query, \
+from app.auth.auth import TokenData, decode_token
+from app.database import create_profile_query, \
     delete_profile_query, get_profiles_query, change_profile_name_query, change_profile_color_query
-from app.models.models import SubscriptionDb, UserId, SubscriptionBase, SubscriptionOut
+
 router = APIRouter(
     prefix="/users/profiles",
     tags=["Profiles"]
 )
 @router.post("/", response_model=ProfileOut)
-async def create_profile(name: str, color:str, token: str = Depends(oauth2_scheme)):
-    data: TokenData = decode_token(token)
-    user = get_user_by_username(data.username)
-    if not user:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="User not found."
-        )
-    profile = create_profile_query(user.username, name, color)
+async def create_profile(name: str, color: str, token: TokenData = Depends(decode_token)):
+    profile = create_profile_query(token.username, name, color)
     return profile
 
 @router.delete("/", response_model=ProfileOut)
-async def delete_profile(name: str, token: str = Depends(oauth2_scheme)):
-    data: TokenData = decode_token(token)
-    user = get_user_by_username(data.username)
-    if not user:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="User not found."
-        )
-    deleteprofile = delete_profile_query(user.username, name)
+async def delete_profile(name: str, token: TokenData = Depends(decode_token)):
+    deleteprofile = delete_profile_query(token.username, name)
+    if not deleteprofile:
+        raise HTTPException(status_code=404, detail="Profile not found")
     return deleteprofile
 
-@router.get("/{profile_id}/", response_model=List[ProfileOut])
-async def get_profiles(token: str = Depends(oauth2_scheme)):
-    data: TokenData = decode_token(token)
-    user = get_user_by_username(data.username)
-    if not user:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="User not found."
-        )
-    getprofiles = get_profiles_query(user.username)
+@router.get("/", response_model=List[ProfileOut]) 
+async def get_profiles(token: TokenData = Depends(decode_token)):
+    getprofiles = get_profiles_query(token.username)
     return getprofiles
+
 @router.put("/profiles/change-name/")
-async def change_name_profile(old_name: str,new_name: str,token: str = Depends(oauth2_scheme)):
-    data: TokenData = decode_token(token)
-    user = get_user_by_username(data.username)
-
-    if not user:
-        raise HTTPException(404, "User not found")
-
-    return change_profile_name_query(user.username, old_name, new_name)
+async def change_name_profile(old_name: str, new_name: str, token: TokenData = Depends(decode_token)):
+    return change_profile_name_query(token.username, old_name, new_name)
 
 @router.put("/profiles/change-color/")
-async def change_profile_color(name: str,color: str, token: str = Depends(oauth2_scheme)):
-    data: TokenData = decode_token(token)
-    user = get_user_by_username(data.username)
-
-    if not user:
-        raise HTTPException(404, "User not found")
-    return change_profile_color_query(user.username, name, color)
+async def change_profile_color(name: str, color: str, token: TokenData = Depends(decode_token)):
+    return change_profile_color_query(token.username, name, color)

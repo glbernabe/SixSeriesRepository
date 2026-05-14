@@ -4,14 +4,13 @@ import uuid
 from fastapi import APIRouter, status, HTTPException, Depends
 from fastapi.security import OAuth2PasswordRequestForm
 from typing import List
-from uuid import UUID
 
 from app.auth.auth import (
     create_access_token, Token, verify_password, oauth2_scheme, decode_token,
-    TokenData, get_hash_password
+    TokenData, get_hash_password, only_superuser
 )
-from app.database import insert_user, get_user_by_id, get_all_users_query, get_user_by_username, \
-    get_superuser_permissions, change_password_query
+from app.database import insert_user, get_all_users_query, get_user_by_username, \
+    get_persmissions, change_password_query
 from app.models.models import UserDb, UserRegister, UserOut
 
 router = APIRouter(
@@ -39,7 +38,6 @@ async def create_user(user_register: UserRegister):
 
     insert_user(new_user)
 
-    return UserOut(id=new_user.id, username=new_user.username, email=new_user.email)
     return UserOut(id=new_user.id, username=new_user.username, email=new_user.email)
 
 
@@ -72,16 +70,11 @@ async def get_user(id: str):
     return UserOut(id=user.id, username=user.username, email=user.email)
 """
 @router.get("/", response_model=List[UserOut], status_code=status.HTTP_200_OK)
-async def get_all_users(token: str = Depends(oauth2_scheme)):
-    data: TokenData = decode_token(token)
+async def get_all_users(token: TokenData = Depends(only_superuser)):
+    
+    require_permission(token.username, "total")
+
     users = get_all_users_query()
-    user = get_user_by_username(data.username)
-    require_permission(user.id, "total")
-    if data.username not in [u.username for u in users]:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Forbidden."
-        )
 
     return [
         UserOut(id=user_db.id, username=user_db.username, email=user_db.email)
@@ -98,29 +91,19 @@ async def get_user_by_username_endpoint(token: str = Depends(oauth2_scheme)):
         )
     return UserOut(id=user.id, username=user.username, email=user.email)
 
-def require_permission(user_id: str, required: str):
-    permission = get_superuser_permissions(user_id)
-    if permission is None:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="User is not superuser"
-        )
+def require_permission(username: str, required: str):
+    permission = get_persmissions(username)
     if permission != "total" and permission != required:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Insufficient permissions"
         )
     return True
+
 @router.put("/", status_code=status.HTTP_200_OK)
-def change_password(new_password: str, new_password_retype: str, token: str = Depends(oauth2_scheme)):
-    data: TokenData = decode_token(token)
-    user = get_user_by_username(data.username)
-    if user is None:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="User not found"
-        )
+def change_password(new_password: str, new_password_retype: str, token: TokenData = Depends(decode_token)):
+
     hashed = get_hash_password(new_password)
-    change_password_query(hashed, new_password, new_password_retype, user.username)
+    change_password_query(hashed, new_password, new_password_retype, token.username)
     return "Password changed"
 

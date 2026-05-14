@@ -122,8 +122,8 @@ class ContentUser(BaseModel):
             seconds = total_seconds % 60
             return time(hour=hours, minute=minutes, second=seconds)
         return v
-    uploadDate: Optional[date]
-    releaseDate: date
+    upload_date: Optional[date]
+    release_date: date
 
 class ContentDb(ContentUser):
     id: str

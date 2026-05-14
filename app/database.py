@@ -3,7 +3,7 @@ from fastapi import HTTPException
 
 import mariadb
 from starlette import status
-from datetime import date, timedelta
+from datetime import date, timedelta, datetime
 from app.models.models import UserDb, SubscriptionDb, UserId, SubscriptionOut, ProfileOut, PaymentOut, ContentDb, \
     ContentUser, Genre, RatingValue, UserOut, HistoryOut, PaymentType
 
@@ -76,8 +76,6 @@ def get_user_by_username(username: str) -> UserDb | None:
             return None
 
 # -------------------------- SUBSCRIPTION ---------------------------------
-from datetime import date, datetime
-import uuid
 
 def add_subscription_query(user_username: str, sub_type: str, end_date:date) -> dict:
     subscription_id = str(uuid.uuid4())
@@ -292,11 +290,11 @@ def get_profiles_query(user_username: str):
             return names
 
 # ------------------------ SUPERUSER -------------------------------------
-def get_superuser_permissions(user_id: str):
+def get_persmissions(username: str):
     with mariadb.connect(**db_config) as conn:
         with conn.cursor() as cursor:
-            sql = "SELECT permissions FROM SUPERUSER WHERE id = ?"
-            cursor.execute(sql, (user_id,))
+            sql = "SELECT permissions FROM USER WHERE username = ?"
+            cursor.execute(sql, (username,))
             row = cursor.fetchone()
             if not row:
                 return None
@@ -450,8 +448,9 @@ def get_all_content_query():
                       type,
                       uploadDate AS upload_date,
                       releaseDate AS release_date,
-                      logoUrl as logo_url,
-                      portraitUrl as portrait_url
+                      logoUrl AS logo_url,
+                      portraitUrl AS portrait_url,
+                      uploadDate AS upload_date
                   FROM CONTENT \
                   """
             cursor.execute(sql)

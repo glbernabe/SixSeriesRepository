@@ -1,30 +1,21 @@
 from datetime import date
-from typing import List
 
 from fastapi import APIRouter, Depends, HTTPException
 from starlette import status
 from dateutil.relativedelta import relativedelta
 
-from app.auth.auth import oauth2_scheme, TokenData, decode_token
-from app.database import get_user_by_username, add_subscription_query, get_subscription_query, \
+from app.auth.auth import TokenData, decode_token
+from app.database import  add_subscription_query, get_subscription_query, \
     cancel_subscription_query, has_active_subscription, update_subscription_query
-from app.models.models import SubscriptionDb, UserId, SubscriptionBase, SubscriptionOut
+from app.models.models import SubscriptionOut
 
 router = APIRouter(
     prefix="/subscription",
     tags=["Subscriptions"]
 )
 @router.post("/", status_code=status.HTTP_201_CREATED)
-async def add_subscription(type: str, token: str = Depends(oauth2_scheme)):
+async def add_subscription(type: str, token: TokenData = Depends(decode_token)):
     end_date = date.today()
-    data: TokenData = decode_token(token)
-
-    user = get_user_by_username(data.username)
-    if not user:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="User not found"
-        )
 
     weekly_type = {"standard", "premium"}
     yearly_type = {"standard_yearly", "premium_yearly"}
@@ -36,29 +27,24 @@ async def add_subscription(type: str, token: str = Depends(oauth2_scheme)):
             detail="Type must be one of: standard, standard_yearly, premium and premium_yearly"
         )
     family = get_family(type_lower)
-    if has_active_subscription(user.username, family):
+
+    if has_active_subscription(token.username, family):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="You already have an active or pending subscription. Cancel it or wait for it to expire before creating a new one."
         )
+    
     if type_lower in weekly_type:
         end_date += relativedelta(months=1)
-        subscription = add_subscription_query(user.username, type_lower, end_date)
-        return subscription
     elif type_lower in yearly_type:
         end_date += relativedelta(years=1)
-        subscription = add_subscription_query(user.username, type_lower, end_date)
-        return subscription
 
-    raise HTTPException(
-        status_code=status.HTTP_400_BAD_REQUEST,
-        detail="Type must be one of: standard, premium, standard_yearly, premium_yearly"
-    )
+    return add_subscription_query(token.username, type_lower, end_date)
+
 @router.get("/me/", response_model=SubscriptionOut)
-def get_user_subscription(token: str = Depends(oauth2_scheme)):
-    data: TokenData = decode_token(token)
-    user = get_user_by_username(data.username)
-    subs = get_subscription_query(user.username)
+def get_user_subscription(token: TokenData = Depends(decode_token)):
+    subs = get_subscription_query(token.username)
+
     # isinstance detecta casos informativo y devuelve en 404 el mensaje de la query
     if isinstance(subs, str):
         raise HTTPException(
@@ -67,17 +53,9 @@ def get_user_subscription(token: str = Depends(oauth2_scheme)):
         )
     return subs
 
-
 @router.delete("/me/", response_model=SubscriptionOut)
-def cancel_subscription(token: str = Depends(oauth2_scheme)):
-    data: TokenData = decode_token(token)
-    user = get_user_by_username(data.username)
-    if not user:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="User not found."
-        )
-    cancel  = cancel_subscription_query(user.username)
+def cancel_subscription(token: TokenData = Depends(decode_token)):
+    cancel = cancel_subscription_query(token.username)
     if not cancel:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -92,7 +70,7 @@ def cancel_subscription(token: str = Depends(oauth2_scheme)):
 
 # Función auxiliar
 def get_family(subtype: str) -> str:
-    subtype =subtype.lower()
+    subtype = subtype.lower()
     if subtype.startswith("standard"):
         return "standard"
     elif subtype.startswith("premium"):
@@ -100,35 +78,31 @@ def get_family(subtype: str) -> str:
     return ""
 
 @router.put("/me/", response_model=SubscriptionOut)
-def update_subscription(new_type:str, token: str = Depends(oauth2_scheme)):
+def update_subscription(new_type: str, token: TokenData = Depends(decode_token)):
     end_date = date.today()
-    data: TokenData = decode_token(token)
-    user = get_user_by_username(data.username)
-    if not user:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="User not found."
-        )
 
     type_lower = new_type.lower()
-    family = type_lower
+    family = get_family(type_lower)
     weekly_type = {"standard", "premium"}
     yearly_type = {"standard_yearly", "premium_yearly"}
-    if type_lower is has_active_subscription(user.username, family):
-        status_code=status.HTTP_400_BAD_REQUEST,
-        detail="You have a similar type of subscription"
-    elif type_lower in weekly_type:
+
+    if has_active_subscription(token.username, family):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="You have a similar type of subscription"
+        )
+    
+    if type_lower in weekly_type:
         end_date += relativedelta(months=1)
-        update = update_subscription_query(user.username, new_type, end_date)
-        return update
     elif type_lower in yearly_type:
         end_date += relativedelta(years=1)
-        update = update_subscription_query(user.username, new_type, end_date)
-        return update
-    raise HTTPException(
-        status_code=status.HTTP_400_BAD_REQUEST,
-        detail="Type must be one of: standard, premium, standard_yearly, premium_yearly"
-    )
+    else:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Type must be one of: standard, premium, standard_yearly, premium_yearly"
+        )
+
+    return update_subscription_query(token.username, type_lower, end_date)
 
 
 

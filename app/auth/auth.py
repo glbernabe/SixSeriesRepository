@@ -56,12 +56,10 @@ def decode_token(token: str) -> TokenData:
             headers={"WWW-Authenticate": "Bearer"}
         )
     
-def only_superuser(token: str) -> TokenData:
-    data = decode_token(token)
-
-    if data.rol != "superuser":
+def only_superuser(token: TokenData = Depends(oauth2_scheme)) -> TokenData:
+    if token.rol != "superuser":
         raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail= "No tienes acceso a estas funciones.",
-            headers={"WWW-Authenticate": "Bearer"}
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="No tienes los privilegios de superusuario necesarios.",
         )
+    return token
