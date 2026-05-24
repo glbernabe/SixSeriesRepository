@@ -90,7 +90,8 @@ def add_subscription_query(user_username: str, sub_type: str, end_date:date) -> 
         "user_username": user_username,
         "type": sub_type,
         "startDate": start_date,
-        "endDate": end_date
+        "endDate": end_date,
+        "status": "pending"
     }
 def get_subscription_query(user_username: str) -> dict | str:
     with mariadb.connect(**db_config) as conn:
@@ -105,6 +106,7 @@ def get_subscription_query(user_username: str) -> dict | str:
                 return "The subscription is inactive"
             return {
                 "id": row[0],
+                "user_username": user_username,
                 "startDate": row[1],
                 "endDate": row[2],
                 "status": row[3],
@@ -203,7 +205,12 @@ def create_profile_query(user_username: str, name: str, color: str):
             cursor.execute(sql_select_profile,(profile_id,))
             conn.commit()
 
-            return {"name": name, "profileColor": color}
+            return {
+                "id": profile_id,
+                "user_username": user_username,
+                "name": name,
+                "profileColor": color
+            }
 def change_profile_name_query(user_username: str, old_name: str, new_name: str):
     with mariadb.connect(**db_config) as conn:
         with conn.cursor() as cursor:
@@ -278,14 +285,15 @@ def change_profile_color_query(user_username: str, name: str, color: str):
 def get_profiles_query(user_username: str):
     with mariadb.connect(**db_config) as conn:
         with conn.cursor() as cursor:
-            sql = "SELECT name, profileColor FROM PROFILE WHERE userUsername = ?"
+            sql = "SELECT id, userUsername, name, profileColor FROM PROFILE WHERE userUsername = ?"
             cursor.execute(sql, (user_username,))
             rows = cursor.fetchall()
 
             names = []
             for row in rows:
                 names.append(
-                    ProfileOut(name=row[0], profileColor=row[1])
+                    ProfileOut(id=row[0], user_username=row[1], name=row[2], profileColor=row[3])
+
                 )
             return names
 
@@ -365,28 +373,36 @@ def confirm_payment_query(user_username: str, method: PaymentType, subscription_
             conn.commit()
 
     return PaymentOut(
+        id=payment_id,
+        subscription_id=sub_id,
         paymentDate=paymentDate,
         method=method,
+        status="completed",
         amount=amount
     )
 
-def get_payments_query(user_username) -> PaymentOut:
+def get_payments_query(user_username) -> list:
     with mariadb.connect(**db_config) as conn:
         with conn.cursor(dictionary=True) as cursor:
-            sql_select = "SELECT id FROM SUBSCRIPTION WHERE userUsername = ?"
-            cursor.execute(sql_select,(user_username,))
-            row = cursor.fetchone()
-            if not row:
-                return None
-            SubscriptionId = row['id']
-            sql_select = "SELECT paymentDate, method, amount FROM PAYMENT WHERE subscriptionId = ?"
-            cursor.execute(sql_select, (SubscriptionId,))
-            row2 = cursor.fetchone()
-        return PaymentOut(
-            paymentDate=row2['paymentDate'],
-            method= row2['method'],
-            amount=row2['amount']
-        )
+            sql = """
+                  SELECT p.id, p.subscriptionId, p.paymentDate, p.method, p.status, p.amount
+                  FROM PAYMENT p
+                           JOIN SUBSCRIPTION s ON p.subscriptionId = s.id
+                  WHERE s.userUsername = ? \
+                  """
+            cursor.execute(sql, (user_username,))
+            rows = cursor.fetchall()
+        return [
+            PaymentOut(
+                id=row['id'],
+                subscription_id=row['subscriptionId'],
+                paymentDate=row['paymentDate'],
+                method=row['method'],
+                status=row['status'],
+                amount=row['amount']
+            )
+            for row in rows
+        ]
 def cancel_payment_query(payment_id: str, user_username: str):
     with mariadb.connect(**db_config) as conn:
         with conn.cursor() as cursor:
@@ -442,15 +458,14 @@ def get_all_content_query():
                       title,
                       description,
                       duration,
-                      ageRating AS age_rating,
-                      coverUrl  AS cover_url,
-                      videoUrl  AS video_url,
+                      ageRating    AS age_rating,
+                      coverUrl     AS cover_url,
+                      videoUrl     AS video_url,
                       type,
-                      uploadDate AS upload_date,
-                      releaseDate AS release_date,
-                      logoUrl AS logo_url,
-                      portraitUrl AS portrait_url,
-                      uploadDate AS upload_date
+                      logoUrl      AS logo_url,
+                      portraitUrl  AS portrait_url,
+                      uploadDate   AS upload_date,
+                      releaseDate  AS release_date
                   FROM CONTENT \
                   """
             cursor.execute(sql)
@@ -472,7 +487,8 @@ def get_content_by_title_query(title: str):
             if row:
                 return ContentUser(title=row[0], description=row[1], duration=row[2],
                                    age_rating=row[3], cover_url=row[4], video_url=row[5],
-                                   type=row[6], uploadDate=row[7], releaseDate=row[8])
+                                   type=row[6], upload_date=row[7], release_date=row[8],
+                                   logo_url=row[9], portrait_url=row[10])
             return None
 
 
@@ -480,8 +496,8 @@ def create_content_query(content: ContentDb):
     with mariadb.connect(**db_config) as conn:
         with conn.cursor() as cursor:
             uploadDate = date.today()
-            sql = "INSERT INTO CONTENT (id, title, description, duration, ageRating, coverUrl, videoUrl, type, logoUrl, portraitUrl, uploadDate, releaseDate) values (?,?,?,?,?,?,?,?,?,?)"
-            values = (content.id, content.title, content.description, content.duration, content.age_rating, content.cover_url, content.video_url, content.type, uploadDate,  content.releaseDate)
+            sql = "INSERT INTO CONTENT (id, title, description, duration, ageRating, coverUrl, videoUrl, type, logoUrl, portraitUrl, uploadDate, releaseDate) VALUES (?,?,?,?,?,?,?,?,?,?,?,?)"
+            values = (content.id, content.title, content.description, content.duration, content.age_rating, content.cover_url, content.video_url, content.type, content.logo_url, content.portrait_url, uploadDate, content.release_date)
             cursor.execute(sql, values)
             conn.commit()
 
@@ -490,9 +506,8 @@ def modify_content_query(content: ContentUser, id_content: str):
     with mariadb.connect(**db_config) as conn:
         with conn.cursor() as cursor:
             sql = "UPDATE CONTENT SET title=?, description=?, duration=?, ageRating=?, coverUrl=?, videoUrl=?, type=?, logoUrl=?, portraitUrl=?, releaseDate =? WHERE id=?"
-            values = (content.title, content.description, content.duration, content.age_rating, content.cover_url, content.video_url, content.type, id_content, content.releaseDate)
+            values = (content.title, content.description, content.duration, content.age_rating, content.cover_url, content.video_url, content.type, content.logo_url,content.portrait_url, content.release_date, id_content)
             cursor.execute(sql, values)
-
             if cursor.rowcount == 0:
                 raise HTTPException(404, "Content not found")
             conn.commit()
@@ -520,8 +535,7 @@ def get_all_genres_query():
             sql = "SELECT id, name FROM GENRE"
             cursor.execute(sql)
             row = cursor.fetchall()
-
-            if cursor.rowcount == 0:
+            if not row:
                 raise HTTPException(404, "There are no genres")
             conn.commit()
             return row
@@ -759,19 +773,26 @@ def get_history_query(profile_name: str):
 # Endpoint para obtener ultimas peliculas en las ultimas 2 semanas, si no hay, se mostraran dos semanas en adelante.
 # Con un maximo de 10
 def get_latest_content_query():
-    content_list = []
     semanas_atras = 2
-    limite_semanas = 52 # Por si no existieran semanas para no hacer un bucle infinito
+    limite_semanas = 52
     with mariadb.connect(**db_config) as conn:
         with conn.cursor(dictionary=True) as cursor:
-            while len(content_list) < 10 and semanas_atras <= limite_semanas:
+            while semanas_atras <= limite_semanas:
                 hoy = date.today()
                 fecha_inicio = hoy - timedelta(weeks=semanas_atras)
-                sql_select = """SELECT title, description, duration, ageRating, coverUrl, videoUrl, type, uploadDate, releaseDate FROM CONTENT where uploadDate BETWEEN %s AND %s ORDER BY uploadDate LIMIT 10 \ """
-                cursor.execute(sql_select,  (fecha_inicio, hoy))
+                sql_select = """
+                             SELECT title, description, duration,
+                                    ageRating AS age_rating, coverUrl AS cover_url,
+                                    videoUrl AS video_url, type,
+                                    logoUrl AS logo_url, portraitUrl AS portrait_url,
+                                    uploadDate AS upload_date, releaseDate AS release_date
+                             FROM CONTENT
+                             WHERE uploadDate BETWEEN ? AND ?
+                             ORDER BY uploadDate DESC LIMIT 10 \
+                             """
+                cursor.execute(sql_select, (fecha_inicio, hoy))
                 resultados = cursor.fetchall()
-                if len(content_list) < 10:
-                    semanas_atras += 2
-                else:
-                    break
-            return resultados[:10]
+                if resultados:
+                    return resultados
+                semanas_atras += 2
+    return []

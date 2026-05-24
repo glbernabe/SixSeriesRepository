@@ -7,13 +7,18 @@ class UserRolEnum(str, Enum):
     user = "user"
     superuser = "superuser"
 
+class RefreshRequest(BaseModel):
+    refresh_token: str
+
 class PermissionsUserEnum(str, Enum):
     total = "total"
     create = "create"
     edit = "edit"
     read = "read"
     none = "none"
-    
+
+class SubscriptionRequest(BaseModel):
+    type: str
 
 class RatingValue(str, Enum): pass
 
@@ -58,6 +63,7 @@ class SubscriptionDb(SubscriptionCreate):
 
 class SubscriptionOut(BaseModel):
     id: str
+    user_username: str
     type: str
     startDate: date
     endDate: date
@@ -79,10 +85,17 @@ class PaymentType(str, Enum):
     paypal = "paypal"
     card = "card"
 class PaymentOut(BaseModel):
+    id: str
+    subscription_id: str
     paymentDate: date
     method: PaymentType
+    status: str
     amount: float
 
+class PaymentRequest(BaseModel):
+    subscription_id: str
+    method: PaymentType
+    amount: float
 # -------------------- Profile Models --------------------
 class ProfileDb(BaseModel):
     id: str
@@ -90,7 +103,13 @@ class ProfileDb(BaseModel):
     name: str
     profileColor: str | None = None
 
+class ProfileCreateRequest(BaseModel):
+    name: str
+    color: str = "#6A6A69"
+
 class ProfileOut(BaseModel):
+    id: str
+    user_username: str
     name: str
     profileColor: str | None = None
     
@@ -123,7 +142,7 @@ class ContentUser(BaseModel):
             return time(hour=hours, minute=minutes, second=seconds)
         return v
     upload_date: Optional[date]
-    release_date: date
+    release_date: Optional[date] = None
 
 class ContentDb(ContentUser):
     id: str

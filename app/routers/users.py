@@ -1,17 +1,20 @@
 # app/routers/users.py
 import uuid
-
+from app.models.models import UserDb, UserRegister, UserOut, UserBase, RefreshRequest
 from fastapi import APIRouter, status, HTTPException, Depends
 from fastapi.security import OAuth2PasswordRequestForm
 from typing import List
 
+from jose import jwt, JWTError
+
 from app.auth.auth import (
     create_access_token, Token, verify_password, oauth2_scheme, decode_token,
-    TokenData, get_hash_password, only_superuser
+    TokenData, get_hash_password, only_superuser, create_refresh_token,
+    SECRET_KEY, ALGORITHM
 )
 from app.database import insert_user, get_all_users_query, get_user_by_username, \
     get_persmissions, change_password_query
-from app.models.models import UserDb, UserRegister, UserOut
+from app.models.models import UserDb, UserRegister, UserOut, UserBase, RefreshRequest
 
 router = APIRouter(
     prefix="/users",
@@ -40,22 +43,20 @@ async def create_user(user_register: UserRegister):
 
     return UserOut(id=new_user.id, username=new_user.username, email=new_user.email)
 
+@router.post("/login/")
+async def login(form_data: OAuth2PasswordRequestForm = Depends()):
+    user = authenticate_user(form_data.username, form_data.password)
+    if not user:
+        raise HTTPException(status_code=401, detail="Credenciales incorrectas")
 
-@router.post("/login/", response_model=Token, status_code=status.HTTP_200_OK)
-async def login_user(form_data: OAuth2PasswordRequestForm = Depends()):
-    username: str | None = form_data.username
-    password: str | None = form_data.password
+    access = create_access_token(user)
+    refresh = create_refresh_token(user)
 
-    user = get_user_by_username(username)
-    if user is None:
-        raise HTTPException(status_code=401, detail="Incorrect username or password.")
-
-    if not verify_password(password, user.password):
-        raise HTTPException(status_code=401, detail="Incorrect username or password.")
-
-    token = create_access_token(user)
-    return token
-
+    return {
+        "access_token": access.access_token,
+        "refresh_token": refresh,
+        "token_type": "bearer"
+    }
 
 """@router.get("/{id}", status_code=status.HTTP_200_OK, response_model=UserOut)
 async def get_user(id: str):
@@ -106,4 +107,33 @@ def change_password(new_password: str, new_password_retype: str, token: TokenDat
     hashed = get_hash_password(new_password)
     change_password_query(hashed, new_password, new_password_retype, token.username)
     return "Password changed"
+@router.post("/refresh/")
+async def refresh_token(request: RefreshRequest):
+    try:
+        payload = jwt.decode(request.refresh_token, SECRET_KEY, algorithms=[ALGORITHM])
+    except JWTError:
+        raise HTTPException(status_code=401, detail="Token inválido")
 
+    if payload.get("type") != "refresh":
+        raise HTTPException(status_code=401, detail="Token inválido")
+
+    user = UserBase(
+        username=payload.get("sub"),
+        email=payload.get("sub"),  # usamos el username como email
+        rol=payload.get("role")
+    )
+    new_access = create_access_token(user)
+    new_refresh = create_refresh_token(user)
+
+    return {
+        "access_token": new_access.access_token,
+        "refresh_token": new_refresh,
+        "token_type": "bearer"
+    }
+def authenticate_user(username: str, password: str) -> UserBase | None:
+    user = get_user_by_username(username)
+    if not user:
+        return None
+    if not verify_password(password, user.password):
+        return None
+    return UserBase(username=user.username, email=user.email, rol=user.rol)

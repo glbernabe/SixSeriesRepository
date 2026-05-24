@@ -1,6 +1,6 @@
 from fastapi import APIRouter
 
-from app.models.models import ProfileOut
+from app.models.models import ProfileOut, ProfileCreateRequest
 from typing import List
 
 from fastapi import APIRouter, Depends, HTTPException
@@ -14,8 +14,8 @@ router = APIRouter(
     tags=["Profiles"]
 )
 @router.post("/", response_model=ProfileOut)
-async def create_profile(name: str, color: str, token: TokenData = Depends(decode_token)):
-    profile = create_profile_query(token.username, name, color)
+async def create_profile(request: ProfileCreateRequest, token: TokenData = Depends(decode_token)):
+    profile = create_profile_query(token.username, request.name, request.color)
     return profile
 
 @router.delete("/", response_model=ProfileOut)

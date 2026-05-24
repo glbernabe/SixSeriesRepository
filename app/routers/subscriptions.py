@@ -7,14 +7,15 @@ from dateutil.relativedelta import relativedelta
 from app.auth.auth import TokenData, decode_token
 from app.database import  add_subscription_query, get_subscription_query, \
     cancel_subscription_query, has_active_subscription, update_subscription_query
-from app.models.models import SubscriptionOut
+from app.models.models import SubscriptionOut, SubscriptionRequest
 
 router = APIRouter(
     prefix="/subscription",
     tags=["Subscriptions"]
 )
-@router.post("/", status_code=status.HTTP_201_CREATED)
-async def add_subscription(type: str, token: TokenData = Depends(decode_token)):
+@router.post("/")
+async def add_subscription(request: SubscriptionRequest, token: TokenData = Depends(decode_token)):
+    type = request.type
     end_date = date.today()
 
     weekly_type = {"standard", "premium"}
