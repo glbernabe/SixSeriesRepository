@@ -18,11 +18,11 @@ async def add_subscription(request: SubscriptionRequest, token: TokenData = Depe
     type = request.type
     end_date = date.today()
 
-    weekly_type = {"standard", "premium"}
+    monthly_type = {"standard", "premium"}
     yearly_type = {"standard_yearly", "premium_yearly"}
 
     type_lower = type.lower()
-    if type_lower not in weekly_type.union(yearly_type):
+    if type_lower not in monthly_type.union(yearly_type):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Type must be one of: standard, standard_yearly, premium and premium_yearly"
@@ -35,7 +35,7 @@ async def add_subscription(request: SubscriptionRequest, token: TokenData = Depe
             detail="You already have an active or pending subscription. Cancel it or wait for it to expire before creating a new one."
         )
     
-    if type_lower in weekly_type:
+    if type_lower in monthly_type:
         end_date += relativedelta(months=1)
     elif type_lower in yearly_type:
         end_date += relativedelta(years=1)

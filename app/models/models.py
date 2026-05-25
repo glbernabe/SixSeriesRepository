@@ -17,6 +17,18 @@ class PermissionsUserEnum(str, Enum):
     read = "read"
     none = "none"
 
+class SubscriptionCatalog(str, Enum):
+    STANDARD = "standard"
+    PREMIUM = "premium"
+    STANDARD_YEARLY = "standard_yearly"
+    PREMIUM_YEARLY = "premium_yearly"
+
+
+class SubscriptionStatus(str, Enum):
+    PENDING = "pending"
+    ACTIVE = "active"
+    EXPIRED = "expired"
+
 class SubscriptionRequest(BaseModel):
     type: str
 
@@ -48,26 +60,32 @@ class UserOut(UserBase):
     
 # -------------------- Subscription Models --------------------
 class SubscriptionBase(BaseModel):
-    type: str
+    type: SubscriptionCatalog
+
+
+class SubscriptionRequest(SubscriptionBase):
+    pass
+
 
 class SubscriptionCreate(SubscriptionBase):
     pass
 
+
 class SubscriptionDb(SubscriptionCreate):
     id: str
-    user_username: str
-    startdate: date
-    endDate: date
-    status: str
-    type: str
-
-class SubscriptionOut(BaseModel):
-    id: str
-    user_username: str
-    type: str
+    userUsername: str
     startDate: date
     endDate: date
-    status: str
+    status: SubscriptionStatus
+
+
+class SubscriptionOut(SubscriptionBase):
+    """Lo que el frontend recibirá desde FastAPI"""
+    id: str
+    userUsername: str
+    startDate: date
+    endDate: date
+    status: SubscriptionStatus
 
 # -------------------- Payment Models --------------------
 class PaymentCreate(BaseModel):
@@ -81,9 +99,11 @@ class PaymentDb(BaseModel):
     method: str
     status: str
     amount: float
+
 class PaymentType(str, Enum):
     paypal = "paypal"
     card = "card"
+
 class PaymentOut(BaseModel):
     id: str
     subscription_id: str

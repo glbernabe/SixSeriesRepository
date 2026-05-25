@@ -211,6 +211,7 @@ def create_profile_query(user_username: str, name: str, color: str):
                 "name": name,
                 "profileColor": color
             }
+        
 def change_profile_name_query(user_username: str, old_name: str, new_name: str):
     with mariadb.connect(**db_config) as conn:
         with conn.cursor() as cursor:
