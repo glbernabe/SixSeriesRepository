@@ -1,6 +1,6 @@
 from fastapi import APIRouter
 
-from app.models.models import ProfileOut, ProfileCreateRequest, ProfileDb
+from app.models.models import ProfileOut, ProfileCreateRequest
 from typing import List
 
 from fastapi import APIRouter, Depends, HTTPException

@@ -119,7 +119,7 @@ class PaymentRequest(BaseModel):
 # -------------------- Profile Models --------------------
 class ProfileDb(BaseModel):
     id: str
-    user_id: str
+    user_username: str
     name: str
     profile_color: str | None = None
 

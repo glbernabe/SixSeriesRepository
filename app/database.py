@@ -203,18 +203,18 @@ def update_subscription_query(user_username: str, new_type: str, end_date: date)
             user_username=row['user_username']
         )
 # ---------------------------- PROFILE ----------------------------------
-def create_profile_query(user_username: str, name: str, color: str):
+def create_profile_query(user_username: str, name: str, color: str) -> dict:
     profile_id = str(uuid.uuid4())
     with mariadb.connect(**db_config) as conn:
         with conn.cursor() as cursor:
             sql_select = "SELECT 1 FROM SUBSCRIPTION WHERE userUsername = ? AND status = 'active'"
             cursor.execute(sql_select, (user_username,))
-            sub = cursor.fetchone()
-            if not sub:
+            if not cursor.fetchone():
                 raise HTTPException(
                     status_code=status.HTTP_404_NOT_FOUND,
                     detail="User has no active subscription"
                 )
+                
             sql_count = "SELECT COUNT(*) FROM PROFILE WHERE userUsername = ?"
             cursor.execute(sql_count, (user_username,))
             count = cursor.fetchone()[0]
@@ -223,120 +223,112 @@ def create_profile_query(user_username: str, name: str, color: str):
                     status_code=status.HTTP_409_CONFLICT,
                     detail="User cannot have more than 5 profiles"
                 )
-            sql_exists = """
-                         SELECT 1 FROM PROFILE
-                         WHERE userUsername = ? AND name = ? \
-                         """
+                
+            sql_exists = "SELECT 1 FROM PROFILE WHERE userUsername = ? AND name = ?"
             cursor.execute(sql_exists, (user_username, name))
-            exists = cursor.fetchone()
-
-            if exists:
+            if cursor.fetchone():
                 raise HTTPException(
                     status_code=status.HTTP_409_CONFLICT,
                     detail="This profile already exists"
                 )
 
-
             sql_insert = "INSERT INTO PROFILE (id, userUsername, name, profileColor) VALUES (?, ?, ?, ?)"
             cursor.execute(sql_insert, (profile_id, user_username, name, color))
-            conn.commit()
-            sql_select_profile = "SELECT id, userUsername, name FROM PROFILE WHERE id = ?"
-            cursor.execute(sql_select_profile,(profile_id,))
             conn.commit()
 
             return {
                 "id": profile_id,
                 "user_username": user_username,
                 "name": name,
-                "profileColor": color
+                "profile_color": color
             }
         
-def change_profile_name_query(user_username: str, old_name: str, new_name: str):
+def change_profile_name_query(user_username: str, old_name: str, new_name: str) -> dict:
     with mariadb.connect(**db_config) as conn:
         with conn.cursor() as cursor:
-            sql_check = """
-                        SELECT id FROM PROFILE
-                        WHERE userUsername = ? AND name = ? \
-                        """
+            sql_check = "SELECT 1 FROM PROFILE WHERE userUsername = ? AND name = ?"
             cursor.execute(sql_check, (user_username, old_name))
-            row = cursor.fetchone()
-            if not row:
+            if not cursor.fetchone():
                 raise HTTPException(
-                    status_code=404,
+                    status_code=status.HTTP_404_NOT_FOUND,
                     detail="Profile not found"
                 )
 
-            sql_exists = """
-                         SELECT 1 FROM PROFILE
-                         WHERE userUsername = ? AND name = ? \
-                         """
+            sql_exists = "SELECT 1 FROM PROFILE WHERE userUsername = ? AND name = ?"
             cursor.execute(sql_exists, (user_username, new_name))
             if cursor.fetchone():
                 raise HTTPException(
-                    status_code=409,
+                    status_code=status.HTTP_409_CONFLICT,
                     detail="Profile name already exists"
                 )
-            sql_update = """
-                         UPDATE PROFILE
-                         SET name = ?
-                         WHERE userUsername = ? AND name = ? \
-                         """
+
+            sql_update = "UPDATE PROFILE SET name = ? WHERE userUsername = ? AND name = ?"
             cursor.execute(sql_update, (new_name, user_username, old_name))
             conn.commit()
             return {"old_name": old_name, "new_name": new_name}
 
-def delete_profile_query(user_username: str, name:str):
+def delete_profile_query(user_username: str, name: str) -> dict:
     with mariadb.connect(**db_config) as conn:
         with conn.cursor() as cursor:
-            sql_exists = """
-                         SELECT 1 FROM PROFILE
-                         WHERE userUsername = ? AND name = ? \
-                         """
+            sql_exists = "SELECT id FROM PROFILE WHERE userUsername = ? AND name = ?"
             cursor.execute(sql_exists, (user_username, name))
-            exists = cursor.fetchone()
+            row = cursor.fetchone()
 
-            if not exists:
+            if not row:
                 raise HTTPException(
-                    status_code=status.HTTP_409_CONFLICT,
-                    detail="This profile doesnt exists"
+                    status_code=status.HTTP_404_NOT_FOUND,
+                    detail="This profile doesnt exist"
                 )
 
-            idProfile = exists[0]
-            sql = "DELETE FROM PROFILE WHERE userUsername = ? AND name = ?"
-            cursor.execute(sql, (user_username, name))
-            conn.commit()
+            profile_real_id = row[0]
+
             sql_history = "DELETE FROM HISTORY WHERE profileId = ?"
-            cursor.execute(sql_history, (idProfile,))
+            cursor.execute(sql_history, (profile_real_id,))
+            
+            sql_delete = "DELETE FROM PROFILE WHERE userUsername = ? AND name = ?"
+            cursor.execute(sql_delete, (user_username, name))
+            
             conn.commit()
             return {"name": name}
 
-def change_profile_color_query(user_username: str, name: str, color: str):
+def change_profile_color_query(user_username: str, name: str, color: str) -> dict:
     with mariadb.connect(**db_config) as conn:
         with conn.cursor() as cursor:
-            sql = "UPDATE PROFILE SET profileColor=? WHERE userUsername = ? AND name = ?"
+            sql = "UPDATE PROFILE SET profileColor = ? WHERE userUsername = ? AND name = ?"
             cursor.execute(sql, (color, user_username, name))
             if cursor.rowcount == 0:
                 raise HTTPException(
-                    status_code=status.HTTP_409_CONFLICT,
+                    status_code=status.HTTP_404_NOT_FOUND,
                     detail="El perfil no existe o no pertenece a esta cuenta."
                 )
-        conn.commit()
-        return {"name": name, "profileColor": color}
-def get_profiles_query(user_username: str):
+            conn.commit()
+        return {"name": name, "profile_color": color}
+
+def get_profiles_query(user_username: str) -> list[dict]:
     with mariadb.connect(**db_config) as conn:
         with conn.cursor() as cursor:
-            sql = "SELECT id, userUsername, name, profileColor FROM PROFILE WHERE userUsername = ?"
+            # Mapeo estricto de columnas camelCase a los atributos de ProfileOut (profile_color)
+            sql = """
+                SELECT 
+                    id, 
+                    userUsername AS user_username, 
+                    name, 
+                    profileColor AS profile_color 
+                FROM PROFILE 
+                WHERE userUsername = ?
+            """
             cursor.execute(sql, (user_username,))
             rows = cursor.fetchall()
 
-            names = []
-            for row in rows:
-                names.append(
-                    ProfileOut(id=row[0], user_username=row[1], name=row[2], profileColor=row[3])
-
-                )
-            return names
-
+            return [
+                {
+                    "id": row[0],
+                    "user_username": row[1],
+                    "name": row[2],
+                    "profile_color": row[3]
+                }
+                for row in rows
+            ]
 # ------------------------ SUPERUSER -------------------------------------
 def get_persmissions(username: str):
     with mariadb.connect(**db_config) as conn:
