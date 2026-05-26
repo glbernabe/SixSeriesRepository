@@ -242,30 +242,6 @@ def create_profile_query(user_username: str, name: str, color: str) -> dict:
                 "name": name,
                 "profile_color": color
             }
-        
-def change_profile_name_query(user_username: str, old_name: str, new_name: str) -> dict:
-    with mariadb.connect(**db_config) as conn:
-        with conn.cursor() as cursor:
-            sql_check = "SELECT 1 FROM PROFILE WHERE userUsername = ? AND name = ?"
-            cursor.execute(sql_check, (user_username, old_name))
-            if not cursor.fetchone():
-                raise HTTPException(
-                    status_code=status.HTTP_404_NOT_FOUND,
-                    detail="Profile not found"
-                )
-
-            sql_exists = "SELECT 1 FROM PROFILE WHERE userUsername = ? AND name = ?"
-            cursor.execute(sql_exists, (user_username, new_name))
-            if cursor.fetchone():
-                raise HTTPException(
-                    status_code=status.HTTP_409_CONFLICT,
-                    detail="Profile name already exists"
-                )
-
-            sql_update = "UPDATE PROFILE SET name = ? WHERE userUsername = ? AND name = ?"
-            cursor.execute(sql_update, (new_name, user_username, old_name))
-            conn.commit()
-            return {"old_name": old_name, "new_name": new_name}
 
 def delete_profile_query(user_username: str, name: str) -> dict:
     with mariadb.connect(**db_config) as conn:
@@ -291,19 +267,44 @@ def delete_profile_query(user_username: str, name: str) -> dict:
             conn.commit()
             return {"name": name}
 
-def change_profile_color_query(user_username: str, name: str, color: str) -> dict:
+def update_full_profile_query(profile_id: str, new_name: str, new_color: str) -> dict:
     with mariadb.connect(**db_config) as conn:
         with conn.cursor() as cursor:
-            sql = "UPDATE PROFILE SET profileColor = ? WHERE userUsername = ? AND name = ?"
-            cursor.execute(sql, (color, user_username, name))
-            if cursor.rowcount == 0:
-                raise HTTPException(
-                    status_code=status.HTTP_404_NOT_FOUND,
-                    detail="El perfil no existe o no pertenece a esta cuenta."
-                )
-            conn.commit()
-        return {"name": name, "profile_color": color}
+            try:
+                sql_update = """
+                    UPDATE PROFILE 
+                    SET name = ?, profileColor = ? 
+                    WHERE id = ?
+                """
+                cursor.execute(sql_update, (new_name, new_color, profile_id))
+                
+                sql_select = """
+                    SELECT id, userUsername, name, profileColor 
+                    FROM PROFILE 
+                    WHERE id = ?
+                """
+                cursor.execute(sql_select, (profile_id,))
+                row = cursor.fetchone()
+                
+                if not row:
+                    return None
+                
+                conn.commit()
 
+                # Mapeo manual
+                return {
+                    "id": row[0],
+                    "user_username": row[1],
+                    "name": row[2],
+                    "profile_color": row[3]
+                }
+                
+            except mariadb.IntegrityError:
+                raise HTTPException(
+                    status_code=status.HTTP_409_CONFLICT,
+                    detail="Profile name already exists"
+                )
+            
 def get_profiles_query(user_username: str) -> list[dict]:
     with mariadb.connect(**db_config) as conn:
         with conn.cursor() as cursor:

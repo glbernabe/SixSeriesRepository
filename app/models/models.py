@@ -125,13 +125,17 @@ class ProfileDb(BaseModel):
 
 class ProfileCreateRequest(BaseModel):
     name: str
-    color: str = "#6A6A69"
+    profile_color: str = "#6A6A69"
 
 class ProfileOut(BaseModel):
     id: str
     user_username: str
     name: str
     profile_color: str | None = None
+
+class ProfileUpdateInput(BaseModel):
+    name: str
+    profile_color: str
     
 # -------------------- Content Models --------------------
 class ContentType(str, Enum):
