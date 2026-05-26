@@ -25,29 +25,23 @@ async def get_all_content():
 
 @router.post("/", status_code=status.HTTP_201_CREATED)
 async def create_content(content: ContentUser, token: TokenData = Depends(only_superuser)):
-    user = get_user_by_username(token.username)
-    if not (require_permission(user.id, "total") or require_permission(user.id, "create")):
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Not enough permissions."
+    if require_permission(token.username, "create"):
+        new_content = ContentDb(
+            id=str(uuid.uuid4()),
+            title= content.title,
+            video_url= content.video_url,
+            age_rating= content.age_rating,
+            cover_url= content.cover_url,
+            description= content.description,
+            duration= content.duration,
+            type= content.type,
+            logo_url= content.logo_url,
+            portrait_url= content.portrait_url,
+            release_date= content.release_date,
+            upload_date= date.today()
         )
-
-    new_content = ContentDb(
-        id=str(uuid.uuid4()),
-        title= content.title,
-        video_url= content.video_url,
-        age_rating= content.age_rating,
-        cover_url= content.cover_url,
-        description= content.description,
-        duration= content.duration,
-        type= content.type,
-        logo_url= content.logo_url,
-        portrait_url= content.portrait_url,
-        release_date= content.release_date,
-        upload_date= date.today()
-    )
-    create_content_query(new_content)
-    raise HTTPException(201, "Content created.")
+        create_content_query(new_content)
+        raise HTTPException(201, "Content created.")
    
 
 @router.get("/{title}/", status_code=status.HTTP_200_OK)

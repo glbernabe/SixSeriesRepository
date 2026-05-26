@@ -77,63 +77,89 @@ def get_user_by_username(username: str) -> UserDb | None:
 
 # -------------------------- SUBSCRIPTION ---------------------------------
 
-def add_subscription_query(user_username: str, sub_type: str, end_date:date) -> dict:
+def add_subscription_query(user_username: str, sub_type: str, end_date: date) -> dict:
     subscription_id = str(uuid.uuid4())
     start_date = date.today()
     with mariadb.connect(**db_config) as conn:
         with conn.cursor() as cursor:
-            sql = "INSERT INTO SUBSCRIPTION (id, userUsername, type, startDate, endDate)VALUES (?, ?, ?, ?, ?) "
-            cursor.execute(sql, (subscription_id, user_username, sub_type, start_date, end_date))
+            # Database columns are camelCase
+            sql = "INSERT INTO SUBSCRIPTION (id, userUsername, type, startDate, endDate, status) VALUES (?, ?, ?, ?, ?, ?)"
+            cursor.execute(sql, (subscription_id, user_username, sub_type, start_date, end_date, "pending"))
             conn.commit()
     return {
         "id": subscription_id,
         "user_username": user_username,
         "type": sub_type,
-        "startDate": start_date,
-        "endDate": end_date,
+        "start_date": start_date,
+        "end_date": end_date,
         "status": "pending"
     }
-def get_subscription_query(user_username: str) -> dict | str:
+
+def get_subscription_query(user_username: str) -> dict:
     with mariadb.connect(**db_config) as conn:
-        with conn.cursor() as cursor:
-            sql = "SELECT id,startDate, endDate, status, type FROM SUBSCRIPTION WHERE userUsername = ? ORDER BY startDate DESC LIMIT 1"
+        with conn.cursor(dictionary=True) as cursor:
+            sql = """
+                SELECT 
+                    id, 
+                    userUsername AS user_username, 
+                    type, 
+                    startDate AS start_date, 
+                    endDate AS end_date, 
+                    status 
+                FROM SUBSCRIPTION 
+                WHERE userUsername = ? 
+                ORDER BY startDate DESC LIMIT 1
+            """
             cursor.execute(sql, (user_username,))
             row = cursor.fetchone()
+            
             if row is None:
-                return "User doesnt hava a subscription yet."
-            end_date = row[2]
-            if end_date < date.today():
-                return "The subscription is inactive"
-            return {
-                "id": row[0],
-                "user_username": user_username,
-                "startDate": row[1],
-                "endDate": row[2],
-                "status": row[3],
-                "type": row[4]
-            }
+                raise HTTPException(
+                    status_code=status.HTTP_404_NOT_FOUND,
+                    detail="User doesnt hava a subscription yet."
+                )
+                
+            if row['end_date'] < date.today() and row['status'] == 'active':
+                row['status'] = 'expired'
+                
+            return row
 
 def cancel_subscription_query(user_username: str) -> SubscriptionOut | None:
     today = date.today()
     with mariadb.connect(**db_config) as conn:
         with conn.cursor(dictionary=True) as cursor:
             sql = "UPDATE SUBSCRIPTION SET endDate = ?, status = ? WHERE userUsername = ? AND status = 'active'"
-            cursor.execute(sql, (today,'expired', user_username))
+            cursor.execute(sql, (today, 'expired', user_username))
             conn.commit()
+            
             if cursor.rowcount == 0:
                 return None
-            sql_select = "SELECT id, type, startDate, endDate, status FROM SUBSCRIPTION WHERE userUsername = ? AND status = 'expired' ORDER BY endDate DESC LIMIT 1"
+                
+            sql_select = """
+                SELECT 
+                    id, 
+                    type, 
+                    startDate AS start_date, 
+                    endDate AS end_date, 
+                    status, 
+                    userUsername AS user_username 
+                FROM SUBSCRIPTION 
+                WHERE userUsername = ? AND status = 'expired' 
+                ORDER BY endDate DESC LIMIT 1
+            """
             cursor.execute(sql_select, (user_username,))
             row = cursor.fetchone()
+            
         return SubscriptionOut(
             id=row['id'],
             type=row['type'],
-            startDate=row['startDate'],
-            endDate=row['endDate'],
-            status=row['status']
+            start_date=row['start_date'],
+            end_date=row['end_date'],
+            status=row['status'],
+            user_username=row['user_username']
         )
 
-def has_active_subscription(user_username:str, family:str) -> bool:
+def has_active_subscription(user_username: str, family: str) -> bool:
     with mariadb.connect(**db_config) as conn:
         with conn.cursor(dictionary=True) as cursor:
             sql = "SELECT COUNT(*) as count FROM SUBSCRIPTION WHERE userUsername = ? AND status IN ('active', 'pending')"
@@ -141,16 +167,28 @@ def has_active_subscription(user_username:str, family:str) -> bool:
             row = cursor.fetchone()
             return row['count'] > 0
 
-def update_subscription_query(user_username:str, new_type:str, endDate:date) -> SubscriptionOut | None:
+def update_subscription_query(user_username: str, new_type: str, end_date: date) -> SubscriptionOut | None:
     with mariadb.connect(**db_config) as conn:
         with conn.cursor(dictionary=True) as cursor:
-            sql = "UPDATE SUBSCRIPTION SET endDate = ?, type = ? WHERE userUsername = ?"
-            cursor.execute(sql, (endDate, new_type, user_username))
+            sql = "UPDATE SUBSCRIPTION SET endDate = ?, type = ?, status = 'active' WHERE userUsername = ? AND status = 'pending'"
+            cursor.execute(sql, (end_date, new_type, user_username))
             conn.commit()
 
-            sql_select = "SELECT id, type, startDate, endDate, status FROM SUBSCRIPTION WHERE userUsername = ? AND status = 'active' ORDER BY endDate DESC LIMIT 1"
+            sql_select = """
+                SELECT 
+                    id, 
+                    type, 
+                    startDate AS start_date, 
+                    endDate AS end_date, 
+                    status, 
+                    userUsername AS user_username 
+                FROM SUBSCRIPTION 
+                WHERE userUsername = ? AND status = 'active' 
+                ORDER BY endDate DESC LIMIT 1
+            """
             cursor.execute(sql_select, (user_username,))
             row = cursor.fetchone()
+            
             if row is None:
                 raise HTTPException(
                     status_code=status.HTTP_404_NOT_FOUND,
@@ -159,9 +197,10 @@ def update_subscription_query(user_username:str, new_type:str, endDate:date) -> 
         return SubscriptionOut(
             id=row['id'],
             type=row['type'],
-            startDate=row['startDate'],
-            endDate=row['endDate'],
-            status=row['status']
+            start_date=row['start_date'],
+            end_date=row['end_date'],
+            status=row['status'],
+            user_username=row['user_username']
         )
 # ---------------------------- PROFILE ----------------------------------
 def create_profile_query(user_username: str, name: str, color: str):
@@ -312,7 +351,7 @@ def get_persmissions(username: str):
 
 # ------------ PAYMENTS -----------------
 def confirm_payment_query(user_username: str, method: PaymentType, subscription_id: str) -> PaymentOut:
-    paymentDate = date.today()
+    payment_date = date.today()
 
     with mariadb.connect(**db_config) as conn:
         with conn.cursor() as cursor:
@@ -366,7 +405,7 @@ def confirm_payment_query(user_username: str, method: PaymentType, subscription_
                              (id, subscriptionId, paymentDate, method, amount)
                          VALUES (?, ?, ?, ?, ?)
                          """
-            cursor.execute(sql_insert, (payment_id, sub_id, paymentDate, method, amount))
+            cursor.execute(sql_insert, (payment_id, sub_id, payment_date, method, amount))
 
             sql_update = "UPDATE SUBSCRIPTION SET status = 'active' WHERE id = ?"
             cursor.execute(sql_update, (sub_id,))
@@ -376,7 +415,7 @@ def confirm_payment_query(user_username: str, method: PaymentType, subscription_
     return PaymentOut(
         id=payment_id,
         subscription_id=sub_id,
-        paymentDate=paymentDate,
+        payment_date=payment_date,
         method=method,
         status="completed",
         amount=amount
@@ -397,7 +436,7 @@ def get_payments_query(user_username) -> list:
             PaymentOut(
                 id=row['id'],
                 subscription_id=row['subscriptionId'],
-                paymentDate=row['paymentDate'],
+                payment_date=row['paymentDate'],
                 method=row['method'],
                 status=row['status'],
                 amount=row['amount']

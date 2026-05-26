@@ -32,6 +32,7 @@ def create_refresh_token(user: UserBase) -> str:
     expire = datetime.utcnow() + timedelta(minutes=REFRESH_TOKEN_EXPIRE_MIN)
     to_encode = {"sub": user.username, "role": user.rol, "exp": expire, "type": "refresh"}
     return jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
+
 def verify_password(plain_pw, hashed_pw) -> bool:
     plain_pw_bytes = plain_pw.encode("utf-8")
     hashed_pw_bytes = hashed_pw.encode("utf-8")

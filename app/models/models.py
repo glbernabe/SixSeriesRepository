@@ -1,21 +1,22 @@
-from pydantic import BaseModel, field_validator
+from pydantic import BaseModel, field_validator, ConfigDict
 from datetime import date, timedelta, datetime, time
+from pydantic.alias_generators import to_camel
 from enum import Enum
 from typing import Optional
 
 class UserRolEnum(str, Enum):
-    user = "user"
-    superuser = "superuser"
+    USER = "user"
+    SUPERUSER = "superuser"
 
 class RefreshRequest(BaseModel):
     refresh_token: str
 
 class PermissionsUserEnum(str, Enum):
-    total = "total"
-    create = "create"
-    edit = "edit"
-    read = "read"
-    none = "none"
+    TOTAL = "total"
+    CREATE = "create"
+    EDIT = "edit"
+    READ = "read"
+    NONE = "none"
 
 class SubscriptionCatalog(str, Enum):
     STANDARD = "standard"
@@ -38,8 +39,8 @@ class RatingValue(str, Enum): pass
 class UserBase(BaseModel):
     username: str
     email: str
-    rol: UserRolEnum = UserRolEnum.user
-    permissions: PermissionsUserEnum = PermissionsUserEnum.none
+    rol: UserRolEnum = UserRolEnum.USER
+    permissions: PermissionsUserEnum = PermissionsUserEnum.NONE
 
 class UserId(BaseModel):
     id: str
@@ -73,18 +74,17 @@ class SubscriptionCreate(SubscriptionBase):
 
 class SubscriptionDb(SubscriptionCreate):
     id: str
-    userUsername: str
-    startDate: date
-    endDate: date
+    user_username: str
+    start_date: date
+    end_date: date
     status: SubscriptionStatus
 
 
 class SubscriptionOut(SubscriptionBase):
-    """Lo que el frontend recibirá desde FastAPI"""
     id: str
-    userUsername: str
-    startDate: date
-    endDate: date
+    user_username: str
+    start_date: date
+    end_date: date
     status: SubscriptionStatus
 
 # -------------------- Payment Models --------------------
@@ -95,19 +95,19 @@ class PaymentCreate(BaseModel):
 class PaymentDb(BaseModel):
     id: str
     subscription_id: str
-    paymentDate: date
+    payment_date: date
     method: str
     status: str
     amount: float
 
 class PaymentType(str, Enum):
-    paypal = "paypal"
-    card = "card"
+    PAYPAL = "paypal"
+    CARD = "card"
 
 class PaymentOut(BaseModel):
     id: str
     subscription_id: str
-    paymentDate: date
+    payment_date: date
     method: PaymentType
     status: str
     amount: float
@@ -121,7 +121,7 @@ class ProfileDb(BaseModel):
     id: str
     user_id: str
     name: str
-    profileColor: str | None = None
+    profile_color: str | None = None
 
 class ProfileCreateRequest(BaseModel):
     name: str
@@ -131,13 +131,13 @@ class ProfileOut(BaseModel):
     id: str
     user_username: str
     name: str
-    profileColor: str | None = None
+    profile_color: str | None = None
     
 # -------------------- Content Models --------------------
 class ContentType(str, Enum):
-    series = "series"
-    movie = "movie"
-    documentary = "documentary"
+    SERIES = "series"
+    MOVIE = "movie"
+    DOCUMENTARY = "documentary"
 
 class ContentUser(BaseModel):
     title: str
@@ -175,9 +175,9 @@ class Genre(BaseModel):
 
 
 class RatingValue(str, Enum):
-    like = "like"
-    dislike = "dislike"
-    unrated = "unrated"
+    LIKE = "like"
+    DISLIKE = "dislike"
+    UNRATED = "unrated"
 
 class RatingCreate(BaseModel):
     content_title: str
@@ -195,5 +195,5 @@ class HistoryCreate(BaseModel):
 
 class HistoryOut(BaseModel):
     title: str
-    lastWatched: datetime
-    timeViewed: int
+    last_watched: datetime
+    time_viewed: int
