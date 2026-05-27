@@ -120,17 +120,17 @@ class ContentType(str, Enum):
     documentary = "documentary"
 
 class ContentUser(BaseModel):
+    id: str | None = None
     title: str
     description: str
     duration: time
     age_rating: str
-    cover_url: str | None = None # La imagen del carusel en grande
+    cover_url: str | None = None
     video_url: str
     type: ContentType
-    logo_url: str | None = None # La imagen del logo en el carusel
-    portrait_url: str | None = None # La imagen que siempre tiene que tener
+    logo_url: str | None = None
+    portrait_url: str | None = None
 
-    #MariaDB hace llegar un 'timedelta' y entonces antes de llegar, lo pasamos a 'time' HH:MM:SS
     @field_validator("duration", mode="before")
     @classmethod
     def parse_duration(cls, v):
@@ -177,3 +177,31 @@ class HistoryOut(BaseModel):
     title: str
     lastWatched: datetime
     timeViewed: int
+
+# -------------------- Episode Models --------------------
+class EpisodeBase(BaseModel):
+    content_id: str
+    season: int = 1
+    episode: int
+    title: str
+    description: Optional[str] = None
+    duration: Optional[time] = None
+    video_url: str
+    cover_url: Optional[str] = None
+
+    @field_validator("duration", mode="before")
+    @classmethod
+    def parse_duration(cls, v):
+        if isinstance(v, timedelta):
+            total_seconds = int(v.total_seconds())
+            hours = (total_seconds // 3600) % 24
+            minutes = (total_seconds % 3600) // 60
+            seconds = total_seconds % 60
+            return time(hour=hours, minute=minutes, second=seconds)
+        return v
+
+class EpisodeDb(EpisodeBase):
+    id: str
+
+class EpisodeOut(EpisodeBase):
+    id: str

@@ -48,12 +48,12 @@ async def create_content(content: ContentUser, token: TokenData = Depends(only_s
     )
     create_content_query(new_content)
     raise HTTPException(201, "Content created.")
-   
+
 
 @router.get("/{title}/", status_code=status.HTTP_200_OK)
 async def get_content_by_title(title: str):
     content = get_content_by_title_query(title)
-    
+
     if not content:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -71,7 +71,7 @@ async def delete_content(content_id: str, token: TokenData = Depends(only_superu
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"El contenido con ID {content_id} no existe."
         )
-    
+
     return None
 
 @router.put("/", status_code=status.HTTP_200_OK)

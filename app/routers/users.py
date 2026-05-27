@@ -1,4 +1,3 @@
-# app/routers/users.py
 import uuid
 from app.models.models import UserDb, UserRegister, UserOut, UserBase, RefreshRequest
 from fastapi import APIRouter, status, HTTPException, Depends
@@ -72,7 +71,7 @@ async def get_user(id: str):
 """
 @router.get("/", response_model=List[UserOut], status_code=status.HTTP_200_OK)
 async def get_all_users(token: TokenData = Depends(only_superuser)):
-    
+
     require_permission(token.username, "total")
 
     users = get_all_users_query()
@@ -81,6 +80,7 @@ async def get_all_users(token: TokenData = Depends(only_superuser)):
         UserOut(id=user_db.id, username=user_db.username, email=user_db.email)
         for user_db in users
     ]
+
 #@router.get("/{getuser}/", response_model=UserOut, status_code=status.HTTP_200_OK)
 async def get_user_by_username_endpoint(token: str = Depends(oauth2_scheme)):
     data: TokenData = decode_token(token)
@@ -107,6 +107,7 @@ def change_password(new_password: str, new_password_retype: str, token: TokenDat
     hashed = get_hash_password(new_password)
     change_password_query(hashed, new_password, new_password_retype, token.username)
     return "Password changed"
+
 @router.post("/refresh/")
 async def refresh_token(request: RefreshRequest):
     try:
@@ -130,6 +131,7 @@ async def refresh_token(request: RefreshRequest):
         "refresh_token": new_refresh,
         "token_type": "bearer"
     }
+
 def authenticate_user(username: str, password: str) -> UserBase | None:
     user = get_user_by_username(username)
     if not user:

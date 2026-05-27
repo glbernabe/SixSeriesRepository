@@ -5,7 +5,7 @@ import mariadb
 from starlette import status
 from datetime import date, timedelta, datetime
 from app.models.models import UserDb, SubscriptionDb, UserId, SubscriptionOut, ProfileOut, PaymentOut, ContentDb, \
-    ContentUser, Genre, RatingValue, UserOut, HistoryOut, PaymentType
+    ContentUser, Genre, RatingValue, UserOut, HistoryOut, PaymentType, EpisodeBase, EpisodeDb
 
 # ----------------------------- DATABASE CONFIG ---------------------------------
 db_config = {
@@ -455,6 +455,7 @@ def get_all_content_query():
         with conn.cursor(dictionary=True) as cursor:
             sql = """
                   SELECT
+                      id,
                       title,
                       description,
                       duration,
@@ -466,11 +467,10 @@ def get_all_content_query():
                       portraitUrl  AS portrait_url,
                       uploadDate   AS upload_date,
                       releaseDate  AS release_date
-                  FROM CONTENT \
+                  FROM CONTENT
                   """
             cursor.execute(sql)
             return cursor.fetchall()
-
 
 
 def get_content_by_title_query(title: str):
@@ -796,3 +796,83 @@ def get_latest_content_query():
                     return resultados
                 semanas_atras += 2
     return []
+# ---------------------- EPISODES ----------------------
+def get_episodes_by_content_query(content_id: str) -> list:
+    with mariadb.connect(**db_config) as conn:
+        with conn.cursor(dictionary=True) as cursor:
+            sql_check = "SELECT 1 FROM CONTENT WHERE id = ?"
+            cursor.execute(sql_check, (content_id,))
+            if not cursor.fetchone():
+                raise HTTPException(404, f"Content '{content_id}' not found")
+
+            sql = """
+                  SELECT id, contentId AS content_id, season, episode,
+                         title, description, duration,
+                         videoUrl AS video_url, coverUrl AS cover_url
+                  FROM EPISODE
+                  WHERE contentId = ?
+                  ORDER BY season, episode
+                  """
+            cursor.execute(sql, (content_id,))
+            return cursor.fetchall()
+
+def create_episode_query(ep: EpisodeDb):
+    with mariadb.connect(**db_config) as conn:
+        with conn.cursor() as cursor:
+            sql_check = "SELECT 1 FROM CONTENT WHERE id = ? AND type = 'series'"
+            cursor.execute(sql_check, (ep.content_id,))
+            if not cursor.fetchone():
+                raise HTTPException(400, "Content not found or is not a series")
+
+            sql_dup = """
+                      SELECT 1 FROM EPISODE
+                      WHERE contentId = ? AND season = ? AND episode = ?
+                      """
+            cursor.execute(sql_dup, (ep.content_id, ep.season, ep.episode))
+            if cursor.fetchone():
+                raise HTTPException(409, f"Episode S{ep.season}E{ep.episode} already exists")
+
+            sql = """
+                  INSERT INTO EPISODE
+                  (id, contentId, season, episode, title, description, duration, videoUrl, coverUrl)
+                  VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                  """
+            cursor.execute(sql, (
+                ep.id, ep.content_id, ep.season, ep.episode,
+                ep.title, ep.description, ep.duration,
+                ep.video_url, ep.cover_url
+            ))
+            conn.commit()
+
+def delete_episode_query(episode_id: str):
+    with mariadb.connect(**db_config) as conn:
+        with conn.cursor() as cursor:
+            sql_check = "SELECT 1 FROM EPISODE WHERE id = ?"
+            cursor.execute(sql_check, (episode_id,))
+            if not cursor.fetchone():
+                raise HTTPException(404, "Episode not found")
+
+            cursor.execute("DELETE FROM EPISODE WHERE id = ?", (episode_id,))
+            conn.commit()
+            return {"deleted_episode_id": episode_id}
+
+def update_episode_query(episode_id: str, ep: EpisodeBase):
+    with mariadb.connect(**db_config) as conn:
+        with conn.cursor() as cursor:
+            sql_check = "SELECT 1 FROM EPISODE WHERE id = ?"
+            cursor.execute(sql_check, (episode_id,))
+            if not cursor.fetchone():
+                raise HTTPException(404, "Episode not found")
+
+            sql = """
+                  UPDATE EPISODE
+                  SET season=?, episode=?, title=?, description=?,
+                      duration=?, videoUrl=?, coverUrl=?
+                  WHERE id=?
+                  """
+            cursor.execute(sql, (
+                ep.season, ep.episode, ep.title, ep.description,
+                ep.duration, ep.video_url, ep.cover_url, episode_id
+            ))
+            conn.commit()
+            return {"updated_episode_id": episode_id}
