@@ -28,6 +28,7 @@ class SubscriptionCatalog(str, Enum):
 class SubscriptionStatus(str, Enum):
     PENDING = "pending"
     ACTIVE = "active"
+    CANCELED = "canceled"
     EXPIRED = "expired"
 
 class SubscriptionRequest(BaseModel):
