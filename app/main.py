@@ -1,6 +1,6 @@
 from fastapi import FastAPI
 
-from app.routers import users, subscriptions, profiles, payments, content, genre, favorites, rating, history
+from app.routers import users, subscriptions, profiles, payments, content, genre, favorites, rating, history, episodes
 
 app = FastAPI(debug=True)
 app.include_router(users.router)
@@ -12,6 +12,7 @@ app.include_router(genre.router)
 app.include_router(favorites.router)
 app.include_router(rating.router)
 app.include_router(history.router)
+app.include_router(episodes.router)
 @app.get("/")
 async def root():
     return {"message": "Prueba"}
