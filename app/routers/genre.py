@@ -1,7 +1,8 @@
-from fastapi import APIRouter, status, Depends
-from app.models.models import Genre
+from fastapi import APIRouter, status, Depends, HTTPException
+from app.models.models import Genre, ContentUser
 from app.auth.auth import (TokenData, only_superuser)
-from app.database import get_all_genres_query,  create_genre_query
+from app.database import get_all_genres_query,  create_genre_query, assign_genre_to_content_query, \
+    remove_genre_from_content_query, get_content_by_genre_query
 import uuid
 from typing import List
 
@@ -29,3 +30,35 @@ async def create_genre(genre_name: str, token: TokenData = Depends(only_superuse
 
     create_genre_query(new_genre)
     return {"detail": "The new genre has been created.", "genre": new_genre}
+
+# ASIGNAR GÉNERO A UN CONTENIDO
+@router.post("/{genre_id}/content/{content_id}", status_code=status.HTTP_201_CREATED)
+async def assign_genre_to_content(genre_id: str, content_id: str, token: TokenData = Depends(only_superuser)):
+    require_permission(token.username, "edit")
+    
+    assign_genre_to_content_query(content_id, genre_id)
+    
+    return {"detail": "The genre has been successfully assigned to the content."}
+
+
+# ELIMINAR GÉNERO DE UN CONTENIDO
+@router.delete("/{genre_id}/content/{content_id}", status_code=status.HTTP_200_OK)
+async def remove_genre_from_content(genre_id: str, content_id: str, token: TokenData = Depends(only_superuser)):
+    require_permission(token.username, "edit")
+    
+    remove_genre_from_content_query(content_id, genre_id)
+    
+    return {"detail": "The genre has been successfully removed from the content."}
+
+# CONSIGUE TODO EL CONTENIDO DE UN GENERO
+@router.get("/{genre_name}", response_model=list[ContentUser], status_code=status.HTTP_200_OK)
+async def get_content_by_genre(genre_name: str):
+    rows = get_content_by_genre_query(genre_name)
+    
+    if not rows:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"No content found for genre '{genre_name}'."
+        )
+        
+    return [ContentUser(**row) for row in rows]

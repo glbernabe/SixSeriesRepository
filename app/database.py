@@ -560,7 +560,31 @@ def delete_content_query(content_id: str):
             conn.commit()
 
             return {"deleted_content_id": content_id}
-
+        
+def get_content_by_genre_query(genre_name: str) -> list[dict]:
+    with mariadb.connect(**db_config) as conn:
+        with conn.cursor(dictionary=True) as cursor:
+            sql = """
+                SELECT 
+                    c.id, 
+                    c.title, 
+                    c.description, 
+                    c.duration, 
+                    c.ageRating AS age_rating, 
+                    c.coverUrl AS cover_url, 
+                    c.videoUrl AS video_url, 
+                    c.type, 
+                    c.logoURL AS logo_url, 
+                    c.portraitURL AS portrait_url, 
+                    c.uploadDate AS upload_date, 
+                    c.releaseDate AS release_date
+                FROM CONTENT c
+                INNER JOIN CONTENT_GENRE cg ON c.id = cg.contentId
+                INNER JOIN GENRE g ON cg.genreId = g.id
+                WHERE LOWER(g.name) = LOWER(?);
+            """
+            cursor.execute(sql, (genre_name,))
+            return cursor.fetchall()
 # ---------------------- GENRE ----------------------
 def get_all_genres_query():
     with mariadb.connect(**db_config) as conn:
@@ -596,6 +620,47 @@ def verify_if_genre_exists(name_genre: str):
 
             if row:
                 raise HTTPException(403, "Genre already exists")
+            
+
+def assign_genre_to_content_query(content_id: str, genre_id: str):
+    with mariadb.connect(**db_config) as conn:
+        with conn.cursor() as cursor:
+            # Validar si el contenido existe
+            cursor.execute("SELECT id FROM CONTENT WHERE id = ?", (content_id,))
+            if not cursor.fetchone():
+                raise HTTPException(404, "Content not found")
+
+            # Validar si el género existe
+            cursor.execute("SELECT id FROM GENRE WHERE id = ?", (genre_id,))
+            if not cursor.fetchone():
+                raise HTTPException(404, "Genre not found")
+
+            # Validar si ya están relacionados (para no duplicar)
+            sql_check = "SELECT 1 FROM CONTENT_GENRE WHERE contentId = ? AND genreId = ?"
+            cursor.execute(sql_check, (content_id, genre_id))
+            if cursor.fetchone():
+                raise HTTPException(400, "This content already has this genre assigned")
+
+            # Hacer la inserción si todo está correcto
+            sql_insert = "INSERT INTO CONTENT_GENRE (contentId, genreId) VALUES (?, ?)"
+            cursor.execute(sql_insert, (content_id, genre_id))
+            conn.commit()  # ¡No olvides el commit para guardar los cambios!
+
+
+def remove_genre_from_content_query(content_id: str, genre_id: str):
+    with mariadb.connect(**db_config) as conn:
+        with conn.cursor() as cursor:
+            # Validar si la relación realmente existe antes de borrar
+            sql_check = "SELECT 1 FROM CONTENT_GENRE WHERE contentId = ? AND genreId = ?"
+            cursor.execute(sql_check, (content_id, genre_id))
+            if not cursor.fetchone():
+                raise HTTPException(404, "The relation between this content and genre does not exist")
+
+            # Eliminar la relación
+            sql_delete = "DELETE FROM CONTENT_GENRE WHERE contentId = ? AND genreId = ?"
+            cursor.execute(sql_delete, (content_id, genre_id))
+            conn.commit()
+
 # ----------------------- FAVORITOS ----------------------------
 def add_favorite_query(content_name: str, user_name: str, addedDate: date):
     with mariadb.connect(**db_config) as conn:

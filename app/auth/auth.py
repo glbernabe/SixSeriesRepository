@@ -60,7 +60,7 @@ def decode_token(token: str = Depends(oauth2_scheme)) -> TokenData:
             headers={"WWW-Authenticate": "Bearer"}
         )
     
-def only_superuser(token: TokenData = Depends(oauth2_scheme)) -> TokenData:
+def only_superuser(token: TokenData = Depends(decode_token)) -> TokenData:
     if token.rol != "superuser":
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
