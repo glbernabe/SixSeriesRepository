@@ -17,45 +17,43 @@ router = APIRouter(
     tags=["Profiles"]
 )
 
-@router.post("/", response_model=ProfileOut)
+@router.post("/", response_model=ProfileOut, status_code=status.HTTP_201_CREATED)
 async def create_profile(request: ProfileCreateRequest, token: TokenData = Depends(decode_token)):
     profile = create_profile_query(token.username, request.name, request.profile_color)
     return profile
 
-@router.delete("/", response_model=ProfileOut)
+@router.delete("/", response_model=ProfileOut, status_code=status.HTTP_200_OK)
 async def delete_profile(name: str, token: TokenData = Depends(decode_token)):
     deleteprofile = delete_profile_query(token.username, name)
     if not deleteprofile:
-        raise HTTPException(status_code=404, detail="Profile not found")
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Profile not found")
     return deleteprofile
 
-@router.get("/", response_model=List[ProfileOut]) 
+@router.get("/", response_model=List[ProfileOut], status_code=status.HTTP_200_OK)
 async def get_profiles(token: TokenData = Depends(decode_token)):
-    try:
-        subscription = get_subscription_query(token.username)
+    subscription = get_subscription_query(token.username)
+    
+    if not subscription:
+        raise HTTPException(
+            status_code=status.HTTP_402_PAYMENT_REQUIRED,
+            detail="Subscription required. No subscription found for this user."
+        )
+
+    current_status = subscription.get("status")
+    
+    if subscription.get("end_date") < date.today() and current_status == "active":
+        current_status = "expired"
         
-        current_status = subscription.get("status")
-        if subscription.get("end_date") < date.today() and current_status == "active":
-            current_status = "expired"
-            
-        if current_status not in ["active", "canceled"]:
-            raise HTTPException(
-                status_code=status.HTTP_402_PAYMENT_REQUIRED,
-                detail="Subscription required. Your current status is not active."
-            )
-            
-    except Exception as ex:
-        if hasattr(ex, "status_code") and ex.status_code == status.HTTP_404_NOT_FOUND:
-            raise HTTPException(
-                status_code=status.HTTP_402_PAYMENT_REQUIRED,
-                detail="Subscription required. No subscription found for this user."
-            )
-        raise ex
+    if current_status not in ["active", "canceled"]:
+        raise HTTPException(
+            status_code=status.HTTP_402_PAYMENT_REQUIRED,
+            detail="Subscription required. Your current status is not active."
+        )
 
     getprofiles = get_profiles_query(token.username)
     return getprofiles
 
-@router.put("/{profile_id}/", response_model=ProfileOut)
+@router.put("/{profile_id}/", response_model=ProfileOut, status_code=status.HTTP_200_OK)
 async def update_profile(
     profile_id: str, 
     request: ProfileUpdateInput, 
@@ -68,6 +66,6 @@ async def update_profile(
     )
     
     if not profile:
-        raise HTTPException(status_code=404, detail="Profile not found in database")
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Profile not found in database")
         
     return profile

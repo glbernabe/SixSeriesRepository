@@ -1,6 +1,6 @@
 import bcrypt
 
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from fastapi.security import OAuth2PasswordBearer
 from jose import jwt, JWTError
 from pydantic import BaseModel
@@ -17,10 +17,10 @@ class Token(BaseModel):
     access_token: str
     token_type: str
 
-
 class TokenData(BaseModel):
     username: str | None = None
     rol: str | None = None
+    permissions: str | None = None
 
 def get_hash_password(plain_pw: str) -> str:
     pw_bytes = plain_pw.encode("utf-8")
@@ -28,30 +28,38 @@ def get_hash_password(plain_pw: str) -> str:
     hashed_pw = bcrypt.hashpw(password=pw_bytes, salt=salt)
     return hashed_pw.decode("utf-8")
 
-def create_refresh_token(user: UserBase) -> str:
-    expire = datetime.utcnow() + timedelta(minutes=REFRESH_TOKEN_EXPIRE_MIN)
-    to_encode = {"sub": user.username, "role": user.rol, "exp": expire, "type": "refresh"}
-    return jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
-
-def verify_password(plain_pw, hashed_pw) -> bool:
+def verify_password(plain_pw: str, hashed_pw: str) -> bool:
     plain_pw_bytes = plain_pw.encode("utf-8")
     hashed_pw_bytes = hashed_pw.encode("utf-8")
     return bcrypt.checkpw(password=plain_pw_bytes, hashed_password=hashed_pw_bytes)
 
+def create_access_token(user: UserBase) -> str:
+    expire = datetime.now(timezone.utc) + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MIN)
+    to_encode = {
+        "sub": user.username,
+        "role": user.rol,
+        "permissions": user.permissions,
+        "exp": expire
+    }
+    return jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
 
-def create_access_token(user: UserBase) -> Token:
-    expire = datetime.utcnow() + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MIN)
-    to_encode = {"sub": user.username,"role": user.rol, "exp": expire}
-    encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
-    return Token(access_token=encoded_jwt, token_type="bearer")
-
+def create_refresh_token(user: UserBase) -> str:
+    expire = datetime.now(timezone.utc) + timedelta(minutes=REFRESH_TOKEN_EXPIRE_MIN)
+    to_encode = {
+        "sub": user.username, 
+        "role": user.rol, 
+        "exp": expire, 
+        "type": "refresh"
+    }
+    return jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
 
 def decode_token(token: str = Depends(oauth2_scheme)) -> TokenData:
     try:
         payload: dict = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
         return TokenData(
             username=payload.get("sub"),
-            rol=payload.get("role")
+            rol=payload.get("role"),
+            permissions=payload.get("permissions")
         )
     except JWTError:
         raise HTTPException(

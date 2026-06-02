@@ -330,17 +330,6 @@ def get_profiles_query(user_username: str) -> list[dict]:
                 }
                 for row in rows
             ]
-# ------------------------ SUPERUSER -------------------------------------
-def get_persmissions(username: str):
-    with mariadb.connect(**db_config) as conn:
-        with conn.cursor() as cursor:
-            sql = "SELECT permissions FROM USER WHERE username = ?"
-            cursor.execute(sql, (username,))
-            row = cursor.fetchone()
-            if not row:
-                return None
-            return row[0]
-
 
 # ------------ PAYMENTS -----------------
 def confirm_payment_query(user_username: str, method: PaymentType, subscription_id: str) -> PaymentOut:

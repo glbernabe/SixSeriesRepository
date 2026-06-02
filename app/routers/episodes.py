@@ -1,5 +1,6 @@
 import uuid
 from fastapi import APIRouter, status, HTTPException, Depends
+from typing import List
 
 from app.auth.auth import TokenData, only_superuser
 from app.database import (
@@ -17,9 +18,8 @@ router = APIRouter(
     tags=["Episodes"]
 )
 
-@router.get("/", response_model=list[EpisodeOut], status_code=status.HTTP_200_OK)
+@router.get("/", response_model=List[EpisodeOut], status_code=status.HTTP_200_OK)
 async def get_episodes(content_id: str):
-    """Devuelve todos los episodios de una serie ordenados por temporada y episodio."""
     return get_episodes_by_content_query(content_id)
 
 @router.post("/", status_code=status.HTTP_201_CREATED)
@@ -28,9 +28,7 @@ async def create_episode(
         episode: EpisodeBase,
         token: TokenData = Depends(only_superuser)
 ):
-    user = get_user_by_username(token.username)
-    if not (require_permission(user.id, "total") or require_permission(user.id, "create")):
-        raise HTTPException(status.HTTP_403_FORBIDDEN, "Not enough permissions.")
+    require_permission(token.permissions, "create")
 
     new_episode = EpisodeDb(
         id=str(uuid.uuid4()),
@@ -53,9 +51,7 @@ async def update_episode(
         episode: EpisodeBase,
         token: TokenData = Depends(only_superuser)
 ):
-    user = get_user_by_username(token.username)
-    if not (require_permission(user.id, "total") or require_permission(user.id, "edit")):
-        raise HTTPException(status.HTTP_403_FORBIDDEN, "Not enough permissions.")
+    require_permission(token.permissions, "edit")
 
     return update_episode_query(episode_id, episode)
 
@@ -65,9 +61,7 @@ async def delete_episode(
         episode_id: str,
         token: TokenData = Depends(only_superuser)
 ):
-    user = get_user_by_username(token.username)
-    if not (require_permission(user.id, "total") or require_permission(user.id, "edit")):
-        raise HTTPException(status.HTTP_403_FORBIDDEN, "Not enough permissions.")
+    require_permission(token.permissions, "delete")
 
     delete_episode_query(episode_id)
     return None

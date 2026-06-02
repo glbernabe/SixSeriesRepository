@@ -13,45 +13,40 @@ router = APIRouter(
     tags=["Genre of Content"]
 )
 
-@router.get("/", response_model= List[Genre], status_code=status.HTTP_200_OK)
+@router.get("/", response_model=List[Genre], status_code=status.HTTP_200_OK)
 async def get_all_genres():
     rows = get_all_genres_query()
     return rows
 
-# PERMISOS TOTAL O CREATE
 @router.post("/", status_code=status.HTTP_201_CREATED)
 async def create_genre(genre_name: str, token: TokenData = Depends(only_superuser)):
-    require_permission(token.username, "create")
+    require_permission(token.permissions, "create")
 
     new_genre = Genre(
-        id = str(uuid.uuid4()),
-        name = genre_name
+        id=str(uuid.uuid4()),
+        name=genre_name
     )
 
     create_genre_query(new_genre)
     return {"detail": "The new genre has been created.", "genre": new_genre}
 
-# ASIGNAR GÉNERO A UN CONTENIDO
 @router.post("/{genre_id}/content/{content_id}", status_code=status.HTTP_201_CREATED)
 async def assign_genre_to_content(genre_id: str, content_id: str, token: TokenData = Depends(only_superuser)):
-    require_permission(token.username, "edit")
+    require_permission(token.permissions, "edit")
     
     assign_genre_to_content_query(content_id, genre_id)
     
     return {"detail": "The genre has been successfully assigned to the content."}
 
-
-# ELIMINAR GÉNERO DE UN CONTENIDO
 @router.delete("/{genre_id}/content/{content_id}", status_code=status.HTTP_200_OK)
 async def remove_genre_from_content(genre_id: str, content_id: str, token: TokenData = Depends(only_superuser)):
-    require_permission(token.username, "edit")
+    require_permission(token.permissions, "edit")
     
     remove_genre_from_content_query(content_id, genre_id)
     
     return {"detail": "The genre has been successfully removed from the content."}
 
-# CONSIGUE TODO EL CONTENIDO DE UN GENERO
-@router.get("/{genre_name}", response_model=list[ContentUser], status_code=status.HTTP_200_OK)
+@router.get("/{genre_name}", response_model=List[ContentUser], status_code=status.HTTP_200_OK)
 async def get_content_by_genre(genre_name: str):
     rows = get_content_by_genre_query(genre_name)
     
