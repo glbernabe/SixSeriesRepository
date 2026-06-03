@@ -1,12 +1,15 @@
 import uuid
 from datetime import date
 from typing import List
+import mariadb
 
+from app.database import db_config
 from fastapi import APIRouter, status, HTTPException, Depends
 
 from app.auth.auth import (TokenData, only_superuser)
 from app.database import create_content_query, get_all_content_query, get_content_by_title_query, \
-    modify_content_query, get_user_by_username, delete_content_query, get_latest_content_query
+    modify_content_query, get_user_by_username, delete_content_query, get_latest_content_query, \
+    delete_content_genres_query, insert_content_genre_rel_query
 
 from app.models.models import ContentUser,ContentDb
 from app.routers.users import require_permission
@@ -52,7 +55,7 @@ async def create_content(content: ContentUser, token: TokenData = Depends(only_s
     create_content_query(new_content)
     return {"detail": "Content created successfully", "id": new_content.id}
 
-@router.get("/{title}/", status_code=status.HTTP_200_OK)
+@router.get("/{title}", status_code=status.HTTP_200_OK)
 async def get_content_by_title(title: str):
     content = get_content_by_title_query(title)
 
@@ -94,5 +97,31 @@ async def modify_content(content_modify: ContentDb, token: TokenData = Depends(o
         release_date=content_modify.release_date
     )
     
-    updated_content = modify_content_query(new_modification, content_modify.id)
-    return updated_content
+    try:
+        # Abrimos una única conexión y cursor para todo el proceso
+        with mariadb.connect(**db_config) as conn:
+            with conn.cursor() as cursor:
+                
+                # 1. Modificar los datos base (Tabla CONTENT) compartiendo el cursor
+                modify_content_query(new_modification, content_modify.id, cursor)
+                
+                # 2. Limpiar relaciones antiguas (Tabla CONTENT_GENRE)
+                delete_content_genres_query(content_modify.id, cursor)
+                
+                # 3. Insertar las nuevas selecciones hechas en Compose
+                if content_modify.genres:
+                    for genre in content_modify.genres:
+                        insert_content_genre_rel_query(content_modify.id, genre.id, cursor)
+                
+                # Confirmamos de forma explícita todos los cambios juntos
+                conn.commit()
+                
+    except mariadb.Error as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Error en la base de datos al sincronizar géneros: {str(e)}"
+        )
+
+    # Devolvemos directamente el objeto 'content_modify' que ya contiene el ID correcto 
+    # y la lista de géneros intacta tal como vino de Ktor
+    return content_modify

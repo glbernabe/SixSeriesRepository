@@ -5,7 +5,7 @@ import mariadb
 from starlette import status
 from datetime import date, timedelta, datetime
 from app.models.models import UserDb, SubscriptionDb, UserId, SubscriptionOut, ProfileOut, PaymentOut, ContentDb, \
-    ContentUser, Genre, RatingValue, UserOut, HistoryOut, PaymentType, EpisodeBase, EpisodeDb
+    ContentUser, Genre, RatingValue, UserOut, HistoryOut, PaymentType, EpisodeBase, EpisodeDb, UserBase
 
 # ----------------------------- DATABASE CONFIG ---------------------------------
 db_config = {
@@ -37,10 +37,24 @@ def get_user_by_id(id_user: str):
 def get_all_users_query():
     with mariadb.connect(**db_config) as conn:
         with conn.cursor() as cursor:
-            sql = "SELECT id, username, password, email, rol, permissions FROM USER"
+            sql = "SELECT id, username, password, email, status, rol, permissions FROM USER"
             cursor.execute(sql)
             rows = cursor.fetchall()
-            return [UserDb(id=r[0], username=r[1], password=r[2], email=r[3], rol=r[4], permissions=r[5]) for r in rows]
+            
+            users = []
+            for r in rows:
+                is_active_bool = (r[4] == 'active') 
+                
+                users.append(UserDb(
+                    id=r[0], 
+                    username=r[1], 
+                    password=r[2], 
+                    email=r[3], 
+                    status=is_active_bool,
+                    rol=r[5], 
+                    permissions=r[6]
+                ))
+            return users
         
 def change_password_query(hashed: str, new_password: str, new_password_retype: str, username: str):
     with mariadb.connect(**db_config) as conn:
@@ -74,6 +88,29 @@ def get_user_by_username(username: str) -> UserDb | None:
             if row:
                 return UserDb(id=row[0], username=row[1], password=row[2], email=row[3], rol=row[4], permissions=row[5])
             return None
+
+def update_user_query(user_id: str, username: str, email: str, hashed_password: str):
+    with mariadb.connect(**db_config) as conn:
+        with conn.cursor() as cursor:
+            sql = "UPDATE USER SET username = ?, email = ?, password = ? WHERE id = ?"
+            cursor.execute(sql, (username, email, hashed_password, user_id))
+            conn.commit()
+
+def update_status_query(user_id: str, is_active: bool):
+    with mariadb.connect(**db_config) as conn:
+        with conn.cursor() as cursor:
+            status_value = "active" if is_active else "inactive"
+            
+            sql = "UPDATE USER SET status = ? WHERE id = ?"
+            cursor.execute(sql, (status_value, user_id))
+            conn.commit()
+
+def delete_user_query(user_id: str):
+    with mariadb.connect(**db_config) as conn:
+        with conn.cursor() as cursor:
+            sql = "DELETE FROM USER WHERE id = ?"
+            cursor.execute(sql, (user_id,))
+            conn.commit()
 
 # -------------------------- SUBSCRIPTION ---------------------------------
 
@@ -524,16 +561,23 @@ def create_content_query(content: ContentDb):
             conn.commit()
 
 
-def modify_content_query(content: ContentUser, id_content: str):
-    with mariadb.connect(**db_config) as conn:
-        with conn.cursor() as cursor:
-            sql = "UPDATE CONTENT SET title=?, description=?, duration=?, ageRating=?, coverUrl=?, videoUrl=?, type=?, logoUrl=?, portraitUrl=?, releaseDate =? WHERE id=?"
-            values = (content.title, content.description, content.duration, content.age_rating, content.cover_url, content.video_url, content.type, content.logo_url,content.portrait_url, content.release_date, id_content)
-            cursor.execute(sql, values)
-            if cursor.rowcount == 0:
-                raise HTTPException(404, "Content not found")
-            conn.commit()
-            return get_content_by_title_query(content.title)
+def modify_content_query(content: ContentUser, id_content: str, cursor):
+    sql = """
+        UPDATE CONTENT 
+        SET title=%s, description=%s, duration=%s, ageRating=%s, coverUrl=%s, 
+            videoUrl=%s, type=%s, logoUrl=%s, portraitUrl=%s, releaseDate=%s 
+        WHERE id=%s
+    """
+    values = (
+        content.title, content.description, content.duration, content.age_rating, 
+        content.cover_url, content.video_url, content.type.value if hasattr(content.type, 'value') else content.type, 
+        content.logo_url, content.portrait_url, content.release_date, id_content
+    )
+    
+    cursor.execute(sql, values)
+    
+    if cursor.rowcount == 0:
+        raise HTTPException(404, "Content not found")
 
 def delete_content_query(content_id: str):
     with mariadb.connect(**db_config) as conn:
@@ -595,10 +639,24 @@ def create_genre_query(new_genre: Genre):
             values = (new_genre.id, new_genre.name)
             cursor.execute(sql, values)
 
-
             conn.commit()
 
+def delete_genre_query(genre_id: str):
+    with mariadb.connect(**db_config) as conn:
+        with conn.cursor() as cursor:
+            # Borra todas las relaciones entre content y genero en la tablas
+            sql_intermedia = "DELETE FROM CONTENT_GENRE WHERE genreId = %s"
+            cursor.execute(sql_intermedia, (genre_id,))
+            
+            # Y ahora se borra el genero por completo
+            sql_genero = "DELETE FROM GENRE WHERE id = %s"
+            cursor.execute(sql_genero, (genre_id,))
 
+            if cursor.rowcount == 0:
+                return False
+            
+            conn.commit()
+            return True
 
 def verify_if_genre_exists(name_genre: str):
     with mariadb.connect(**db_config) as conn:
@@ -630,10 +688,9 @@ def assign_genre_to_content_query(content_id: str, genre_id: str):
             if cursor.fetchone():
                 raise HTTPException(400, "This content already has this genre assigned")
 
-            # Hacer la inserción si todo está correcto
             sql_insert = "INSERT INTO CONTENT_GENRE (contentId, genreId) VALUES (?, ?)"
             cursor.execute(sql_insert, (content_id, genre_id))
-            conn.commit()  # ¡No olvides el commit para guardar los cambios!
+            conn.commit()
 
 
 def remove_genre_from_content_query(content_id: str, genre_id: str):
@@ -649,6 +706,24 @@ def remove_genre_from_content_query(content_id: str, genre_id: str):
             sql_delete = "DELETE FROM CONTENT_GENRE WHERE contentId = ? AND genreId = ?"
             cursor.execute(sql_delete, (content_id, genre_id))
             conn.commit()
+
+# -------------------- Content-Genre Queries --------------------
+def delete_content_genres_query(content_id: str, cursor):
+    """
+    Elimina todas las relaciones existentes de un contenido con sus géneros.
+    Usa el cursor de la transacción compartida.
+    """
+    query = "DELETE FROM `CONTENT_GENRE` WHERE `contentId` = %s;"
+    cursor.execute(query, (content_id,))
+
+
+def insert_content_genre_rel_query(content_id: str, genre_id: str, cursor):
+    """
+    Inserta una nueva relación entre una producción y un género.
+    Usa el cursor de la transacción compartida.
+    """
+    query = "INSERT INTO `CONTENT_GENRE` (`contentId`, `genreId`) VALUES (%s, %s);"
+    cursor.execute(query, (content_id, genre_id))
 
 # ----------------------- FAVORITOS ----------------------------
 def add_favorite_query(content_name: str, user_name: str, addedDate: date):
@@ -673,6 +748,7 @@ def add_favorite_query(content_name: str, user_name: str, addedDate: date):
             conn.commit()
             return {"Content name:": content_name,
                     "AddedDate": addedDate}
+        
 def remove_favorite_query(content_name:str, user_name: str):
     with mariadb.connect(**db_config) as conn:
         with conn.cursor() as cursor:

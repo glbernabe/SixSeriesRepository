@@ -2,7 +2,7 @@ from pydantic import BaseModel, field_validator, ConfigDict
 from datetime import date, timedelta, datetime, time
 from pydantic.alias_generators import to_camel
 from enum import Enum
-from typing import Optional
+from typing import Optional, List
 
 class UserRolEnum(str, Enum):
     USER = "user"
@@ -23,6 +23,7 @@ class SubscriptionCatalog(str, Enum):
     PREMIUM = "premium"
     STANDARD_YEARLY = "standard_yearly"
     PREMIUM_YEARLY = "premium_yearly"
+    ADMIN_LIFE = "admin_life"
 
 
 class SubscriptionStatus(str, Enum):
@@ -33,60 +34,6 @@ class SubscriptionStatus(str, Enum):
 
 class SubscriptionRequest(BaseModel):
     type: str
-
-class RatingValue(str, Enum): pass
-
-# -------------------- User Models --------------------
-class UserBase(BaseModel):
-    username: str
-    email: str
-    rol: UserRolEnum = UserRolEnum.USER
-    permissions: PermissionsUserEnum = PermissionsUserEnum.NONE
-
-class UserId(BaseModel):
-    id: str
-
-class UserRegister(UserBase):
-    password: str
-
-class UserLogin(BaseModel):
-    username: str
-    password: str
-
-class UserDb(UserBase):
-    id: str
-    password: str
-
-class UserOut(UserBase):
-    id: str
-    
-# -------------------- Subscription Models --------------------
-class SubscriptionBase(BaseModel):
-    type: SubscriptionCatalog
-
-
-class SubscriptionRequest(SubscriptionBase):
-    pass
-
-
-class SubscriptionCreate(SubscriptionBase):
-    pass
-
-
-class SubscriptionDb(SubscriptionCreate):
-    id: str
-    user_username: str
-    start_date: date
-    end_date: date
-    status: SubscriptionStatus
-
-
-class SubscriptionOut(SubscriptionBase):
-    id: str
-    user_username: str
-    start_date: date
-    end_date: date
-    status: SubscriptionStatus
 
 # -------------------- Payment Models --------------------
 class PaymentCreate(BaseModel):
@@ -117,6 +64,58 @@ class PaymentRequest(BaseModel):
     subscription_id: str
     method: PaymentType
     amount: float
+
+# -------------------- Subscription Models --------------------
+class SubscriptionBase(BaseModel):
+    type: SubscriptionCatalog
+
+class SubscriptionCreate(SubscriptionBase):
+    pass
+
+class SubscriptionDb(SubscriptionCreate):
+    id: str
+    user_username: str
+    start_date: date
+    end_date: date
+    status: SubscriptionStatus
+
+class SubscriptionOut(SubscriptionBase):
+    id: str
+    user_username: str
+    start_date: date
+    end_date: date
+    status: SubscriptionStatus
+
+# -------------------- User Models --------------------
+class UserBase(BaseModel):
+    username: str
+    email: str
+    rol: UserRolEnum = UserRolEnum.USER
+    permissions: PermissionsUserEnum = PermissionsUserEnum.NONE
+    status: bool = True
+
+class UserId(BaseModel):
+    id: str
+
+class UserRegister(UserBase):
+    password: str
+
+class UserLogin(BaseModel):
+    username: str
+    password: str
+
+class UserDb(UserBase):
+    id: str
+    password: str
+
+class UserOut(UserBase):
+    id: str
+    subscription: Optional[SubscriptionOut] = None
+    payment_history: List[PaymentOut] = []
+
+class UserStatusUpdate(BaseModel):
+    is_active: bool
+
 # -------------------- Profile Models --------------------
 class ProfileDb(BaseModel):
     id: str
@@ -137,7 +136,15 @@ class ProfileOut(BaseModel):
 class ProfileUpdateInput(BaseModel):
     name: str
     profile_color: str
-    
+
+# -------------------- Gender Models --------------------
+class GenreCreate(BaseModel):
+    name: str
+
+class Genre(BaseModel):
+    id: str
+    name: str
+
 # -------------------- Content Models --------------------
 class ContentType(str, Enum):
     SERIES = "series"
@@ -147,18 +154,25 @@ class ContentType(str, Enum):
 class ContentUser(BaseModel):
     id: str | None = None
     title: str
-    description: str
-    duration: time
+    description: str | None = None
+    duration: time | None = None
     age_rating: str
     cover_url: str | None = None
-    video_url: str
+    video_url: str | None = None
     type: ContentType
     logo_url: str | None = None
     portrait_url: str | None = None
+    upload_date: date | None = None
+    release_date: date | None = None
+    genres: List[Genre] = []
 
     @field_validator("duration", mode="before")
     @classmethod
     def parse_duration(cls, v):
+        if not v:
+            return None
+        if isinstance(v, str) and (v.strip() == "" or v == "null"):
+            return None
         if isinstance(v, timedelta):
             total_seconds = int(v.total_seconds())
             hours = (total_seconds // 3600) % 24 
@@ -166,19 +180,19 @@ class ContentUser(BaseModel):
             seconds = total_seconds % 60
             return time(hour=hours, minute=minutes, second=seconds)
         return v
-    upload_date: Optional[date]
-    release_date: Optional[date] = None
+
+    @field_validator("upload_date", "release_date", mode="before")
+    @classmethod
+    def parse_dates(cls, v):
+        if isinstance(v, str) and (v.strip() == "" or v == "null"):
+            return None
+        return v
 
 class ContentDb(ContentUser):
     id: str
 
-# -------------------- Gender Models --------------------
 
-class Genre(BaseModel):
-    id: str
-    name: str
-
-
+# -------------------- Rating Models --------------------
 class RatingValue(str, Enum):
     LIKE = "like"
     DISLIKE = "dislike"
@@ -193,7 +207,7 @@ class RatingOut(BaseModel):
     rating: RatingValue
 
 
-
+# -------------------- History Models --------------------
 class HistoryCreate(BaseModel):
     content_title: str
     time_viewed: int
