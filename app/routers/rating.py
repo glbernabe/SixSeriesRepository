@@ -9,8 +9,11 @@ router = APIRouter(
     prefix="/profiles",
     tags=["Ratings"]
 )
+
+
 @router.post("/{profile_name}/rating/", status_code=status.HTTP_201_CREATED)
-async def rate_content(content_name: str,profile_name:str, RatingValue: RatingValue, token: TokenData = Depends(decode_token)):
+async def rate_content(content_name: str, profile_name: str, RatingValue: RatingValue,
+                       token: TokenData = Depends(decode_token)):
     rate_content_query(
         content_name,
         profile_name,
@@ -20,7 +23,8 @@ async def rate_content(content_name: str,profile_name:str, RatingValue: RatingVa
 
     return {"detail": "Rating saved"}
 
+
 @router.get("/{profile_name}/rating/", status_code=status.HTTP_200_OK)
-async def get_rates(profile_name:str, token: TokenData = Depends(decode_token)):
+async def get_rates(profile_name: str, token: TokenData = Depends(decode_token)):
     rates = get_rates_query(profile_name, token.username)
     return rates

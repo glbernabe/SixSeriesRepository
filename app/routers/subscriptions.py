@@ -5,7 +5,7 @@ from starlette import status
 from dateutil.relativedelta import relativedelta
 
 from app.auth.auth import TokenData, decode_token
-from app.database import  add_subscription_query, get_subscription_query, \
+from app.database import add_subscription_query, get_subscription_query, \
     cancel_subscription_query, has_active_subscription, update_subscription_query
 from app.models.models import SubscriptionOut, SubscriptionRequest
 
@@ -13,6 +13,8 @@ router = APIRouter(
     prefix="/subscription",
     tags=["Subscriptions"]
 )
+
+
 @router.post("/")
 async def add_subscription(request: SubscriptionRequest, token: TokenData = Depends(decode_token)):
     type = request.type
@@ -34,13 +36,14 @@ async def add_subscription(request: SubscriptionRequest, token: TokenData = Depe
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="You already have an active or pending subscription. Cancel it or wait for it to expire before creating a new one."
         )
-    
+
     if type_lower in monthly_type:
         end_date += relativedelta(months=1)
     elif type_lower in yearly_type:
         end_date += relativedelta(years=1)
 
     return add_subscription_query(token.username, type_lower, end_date)
+
 
 @router.get("/me/", response_model=SubscriptionOut)
 def get_user_subscription(token: TokenData = Depends(decode_token)):
@@ -54,6 +57,7 @@ def get_user_subscription(token: TokenData = Depends(decode_token)):
         )
     return subs
 
+
 @router.delete("/me/", response_model=SubscriptionOut)
 def cancel_subscription(token: TokenData = Depends(decode_token)):
     cancel = cancel_subscription_query(token.username)
@@ -63,6 +67,7 @@ def cancel_subscription(token: TokenData = Depends(decode_token)):
             detail="No subscription to cancel."
         )
     return cancel
+
 
 # Cancelar subscripcion, actualizar
 # Perfiles se crean con usuarios con subscripcion
@@ -78,6 +83,7 @@ def get_family(subtype: str) -> str:
         return "premium"
     return ""
 
+
 @router.put("/me/", response_model=SubscriptionOut)
 def update_subscription(new_type: str, token: TokenData = Depends(decode_token)):
     end_date = date.today()
@@ -92,7 +98,7 @@ def update_subscription(new_type: str, token: TokenData = Depends(decode_token))
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="You have a similar type of subscription"
         )
-    
+
     if type_lower in weekly_type:
         end_date += relativedelta(months=1)
     elif type_lower in yearly_type:
@@ -104,8 +110,6 @@ def update_subscription(new_type: str, token: TokenData = Depends(decode_token))
         )
 
     return update_subscription_query(token.username, type_lower, end_date)
-
-
 
 # IDEA:
 # Añadir un nuevo estado "pending" al ENUM de SUBSCRIPTION.

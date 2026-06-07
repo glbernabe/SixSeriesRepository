@@ -11,13 +11,16 @@ router = APIRouter(
     tags=["Payments"]
 )
 
+
 @router.post("/add/", response_model=PaymentOut)
 async def confirm_payment(request: PaymentRequest, token: TokenData = Depends(decode_token)):
     return confirm_payment_query(token.username, request.method, request.subscription_id)
 
+
 @router.get("/me/", response_model=List[PaymentOut])
 async def get_payments(token: TokenData = Depends(decode_token)):
     return get_payments_query(token.username)
+
 
 @router.put("/cancel/{payment_id}")
 async def cancel_payment(payment_id: str, token: TokenData = Depends(decode_token)):

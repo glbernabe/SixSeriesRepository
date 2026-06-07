@@ -11,7 +11,7 @@ from app.database import create_content_query, get_all_content_query, get_conten
     modify_content_query, get_user_by_username, delete_content_query, get_latest_content_query, \
     delete_content_genres_query, insert_content_genre_rel_query
 
-from app.models.models import ContentUser,ContentDb
+from app.models.models import ContentUser, ContentDb
 from app.routers.users import require_permission
 
 router = APIRouter(
@@ -19,10 +19,12 @@ router = APIRouter(
     tags=["Contents"]
 )
 
+
 @router.get("/", response_model=List[ContentUser], status_code=status.HTTP_200_OK)
 async def get_all_content():
     rows = get_all_content_query()
     return [ContentUser(**row) for row in rows]
+
 
 @router.get("/latest", status_code=status.HTTP_200_OK)
 async def get_latest_content():
@@ -33,6 +35,7 @@ async def get_latest_content():
         status_code=status.HTTP_404_NOT_FOUND,
         detail="Not found content."
     )
+
 
 @router.post("/", status_code=status.HTTP_201_CREATED)
 async def create_content(content: ContentUser, token: TokenData = Depends(only_superuser)):
@@ -55,6 +58,7 @@ async def create_content(content: ContentUser, token: TokenData = Depends(only_s
     create_content_query(new_content)
     return {"detail": "Content created successfully", "id": new_content.id}
 
+
 @router.get("/{title}", status_code=status.HTTP_200_OK)
 async def get_content_by_title(title: str):
     content = get_content_by_title_query(title)
@@ -66,6 +70,7 @@ async def get_content_by_title(title: str):
         )
 
     return content
+
 
 @router.delete("/{content_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_content(content_id: str, token: TokenData = Depends(only_superuser)):
@@ -79,6 +84,7 @@ async def delete_content(content_id: str, token: TokenData = Depends(only_superu
         )
 
     return None
+
 
 @router.put("/", status_code=status.HTTP_200_OK)
 async def modify_content(content_modify: ContentDb, token: TokenData = Depends(only_superuser)):
@@ -96,26 +102,26 @@ async def modify_content(content_modify: ContentDb, token: TokenData = Depends(o
         portrait_url=content_modify.portrait_url,
         release_date=content_modify.release_date
     )
-    
+
     try:
         # Abrimos una única conexión y cursor para todo el proceso
         with mariadb.connect(**db_config) as conn:
             with conn.cursor() as cursor:
-                
+
                 # 1. Modificar los datos base (Tabla CONTENT) compartiendo el cursor
                 modify_content_query(new_modification, content_modify.id, cursor)
-                
+
                 # 2. Limpiar relaciones antiguas (Tabla CONTENT_GENRE)
                 delete_content_genres_query(content_modify.id, cursor)
-                
+
                 # 3. Insertar las nuevas selecciones hechas en Compose
                 if content_modify.genres:
                     for genre in content_modify.genres:
                         insert_content_genre_rel_query(content_modify.id, genre.id, cursor)
-                
+
                 # Confirmamos de forma explícita todos los cambios juntos
                 conn.commit()
-                
+
     except mariadb.Error as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,

@@ -18,9 +18,11 @@ router = APIRouter(
     tags=["Episodes"]
 )
 
+
 @router.get("/", response_model=List[EpisodeOut], status_code=status.HTTP_200_OK)
 async def get_episodes(content_id: str):
     return get_episodes_by_content_query(content_id)
+
 
 @router.post("/", status_code=status.HTTP_201_CREATED)
 async def create_episode(
@@ -44,6 +46,7 @@ async def create_episode(
     create_episode_query(new_episode)
     return {"detail": "Episode created."}
 
+
 @router.put("/{episode_id}", status_code=status.HTTP_200_OK)
 async def update_episode(
         content_id: str,
@@ -54,6 +57,7 @@ async def update_episode(
     require_permission(token.permissions, "edit")
 
     return update_episode_query(episode_id, episode)
+
 
 @router.delete("/{episode_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_episode(

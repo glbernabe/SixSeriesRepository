@@ -9,10 +9,13 @@ router = APIRouter(
     prefix="/history",
     tags=["History"]
 )
+
+
 @router.post("/profiles/{profile_name}/history")
-async def save_history(profile_name: str,his: HistoryCreate, token: TokenData = Depends(decode_token)):
-    upsert_history_query(profile_name,his.content_title,his.time_viewed)
+async def save_history(profile_name: str, his: HistoryCreate, token: TokenData = Depends(decode_token)):
+    upsert_history_query(profile_name, his.content_title, his.time_viewed)
     return {"message": "History updated"}
+
 
 @router.get("/{profile_name}", response_model=list[HistoryOut], )
 async def get_history(profile_name: str, token: TokenData = Depends(decode_token)):

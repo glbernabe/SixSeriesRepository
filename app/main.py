@@ -13,8 +13,8 @@ app.include_router(favorites.router)
 app.include_router(rating.router)
 app.include_router(history.router)
 app.include_router(episodes.router)
+
+
 @app.get("/")
 async def root():
     return {"message": "Prueba"}
-
-

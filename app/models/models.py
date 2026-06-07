@@ -4,12 +4,15 @@ from pydantic.alias_generators import to_camel
 from enum import Enum
 from typing import Optional, List
 
+
 class UserRolEnum(str, Enum):
     USER = "user"
     SUPERUSER = "superuser"
 
+
 class RefreshRequest(BaseModel):
     refresh_token: str
+
 
 class PermissionsUserEnum(str, Enum):
     TOTAL = "total"
@@ -17,6 +20,7 @@ class PermissionsUserEnum(str, Enum):
     EDIT = "edit"
     READ = "read"
     NONE = "none"
+
 
 class SubscriptionCatalog(str, Enum):
     STANDARD = "standard"
@@ -32,13 +36,16 @@ class SubscriptionStatus(str, Enum):
     CANCELED = "canceled"
     EXPIRED = "expired"
 
+
 class SubscriptionRequest(BaseModel):
     type: str
+
 
 # -------------------- Payment Models --------------------
 class PaymentCreate(BaseModel):
     method: str
     amount: float
+
 
 class PaymentDb(BaseModel):
     id: str
@@ -48,9 +55,11 @@ class PaymentDb(BaseModel):
     status: str
     amount: float
 
+
 class PaymentType(str, Enum):
     PAYPAL = "paypal"
     CARD = "card"
+
 
 class PaymentOut(BaseModel):
     id: str
@@ -60,17 +69,21 @@ class PaymentOut(BaseModel):
     status: str
     amount: float
 
+
 class PaymentRequest(BaseModel):
     subscription_id: str
     method: PaymentType
     amount: float
 
+
 # -------------------- Subscription Models --------------------
 class SubscriptionBase(BaseModel):
     type: SubscriptionCatalog
 
+
 class SubscriptionCreate(SubscriptionBase):
     pass
+
 
 class SubscriptionDb(SubscriptionCreate):
     id: str
@@ -79,12 +92,14 @@ class SubscriptionDb(SubscriptionCreate):
     end_date: date
     status: SubscriptionStatus
 
+
 class SubscriptionOut(SubscriptionBase):
     id: str
     user_username: str
     start_date: date
     end_date: date
     status: SubscriptionStatus
+
 
 # -------------------- User Models --------------------
 class UserBase(BaseModel):
@@ -94,27 +109,34 @@ class UserBase(BaseModel):
     permissions: PermissionsUserEnum = PermissionsUserEnum.NONE
     status: bool = True
 
+
 class UserId(BaseModel):
     id: str
 
+
 class UserRegister(UserBase):
     password: str
+
 
 class UserLogin(BaseModel):
     username: str
     password: str
 
+
 class UserDb(UserBase):
     id: str
     password: str
+
 
 class UserOut(UserBase):
     id: str
     subscription: Optional[SubscriptionOut] = None
     payment_history: List[PaymentOut] = []
 
+
 class UserStatusUpdate(BaseModel):
     is_active: bool
+
 
 # -------------------- Profile Models --------------------
 class ProfileDb(BaseModel):
@@ -123,9 +145,11 @@ class ProfileDb(BaseModel):
     name: str
     profile_color: str | None = None
 
+
 class ProfileCreateRequest(BaseModel):
     name: str
     profile_color: str = "#6A6A69"
+
 
 class ProfileOut(BaseModel):
     id: str
@@ -133,23 +157,28 @@ class ProfileOut(BaseModel):
     name: str
     profile_color: str | None = None
 
+
 class ProfileUpdateInput(BaseModel):
     name: str
     profile_color: str
+
 
 # -------------------- Gender Models --------------------
 class GenreCreate(BaseModel):
     name: str
 
+
 class Genre(BaseModel):
     id: str
     name: str
+
 
 # -------------------- Content Models --------------------
 class ContentType(str, Enum):
     SERIES = "series"
     MOVIE = "movie"
     DOCUMENTARY = "documentary"
+
 
 class ContentUser(BaseModel):
     id: str | None = None
@@ -175,7 +204,7 @@ class ContentUser(BaseModel):
             return None
         if isinstance(v, timedelta):
             total_seconds = int(v.total_seconds())
-            hours = (total_seconds // 3600) % 24 
+            hours = (total_seconds // 3600) % 24
             minutes = (total_seconds % 3600) // 60
             seconds = total_seconds % 60
             return time(hour=hours, minute=minutes, second=seconds)
@@ -188,6 +217,7 @@ class ContentUser(BaseModel):
             return None
         return v
 
+
 class ContentDb(ContentUser):
     id: str
 
@@ -198,9 +228,11 @@ class RatingValue(str, Enum):
     DISLIKE = "dislike"
     UNRATED = "unrated"
 
+
 class RatingCreate(BaseModel):
     content_title: str
     rating: RatingValue
+
 
 class RatingOut(BaseModel):
     title: str
@@ -212,10 +244,12 @@ class HistoryCreate(BaseModel):
     content_title: str
     time_viewed: int
 
+
 class HistoryOut(BaseModel):
     title: str
     lastWatched: datetime
     timeViewed: int
+
 
 # -------------------- Episode Models --------------------
 class EpisodeBase(BaseModel):
@@ -239,8 +273,10 @@ class EpisodeBase(BaseModel):
             return time(hour=hours, minute=minutes, second=seconds)
         return v
 
+
 class EpisodeDb(EpisodeBase):
     id: str
+
 
 class EpisodeOut(EpisodeBase):
     id: str

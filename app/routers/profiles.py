@@ -17,10 +17,12 @@ router = APIRouter(
     tags=["Profiles"]
 )
 
+
 @router.post("/", response_model=ProfileOut, status_code=status.HTTP_201_CREATED)
 async def create_profile(request: ProfileCreateRequest, token: TokenData = Depends(decode_token)):
     profile = create_profile_query(token.username, request.name, request.profile_color)
     return profile
+
 
 @router.delete("/", response_model=ProfileOut, status_code=status.HTTP_200_OK)
 async def delete_profile(name: str, token: TokenData = Depends(decode_token)):
@@ -29,10 +31,11 @@ async def delete_profile(name: str, token: TokenData = Depends(decode_token)):
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Profile not found")
     return deleteprofile
 
+
 @router.get("/", response_model=List[ProfileOut], status_code=status.HTTP_200_OK)
 async def get_profiles(token: TokenData = Depends(decode_token)):
     subscription = get_subscription_query(token.username)
-    
+
     if not subscription:
         raise HTTPException(
             status_code=status.HTTP_402_PAYMENT_REQUIRED,
@@ -40,10 +43,10 @@ async def get_profiles(token: TokenData = Depends(decode_token)):
         )
 
     current_status = subscription.get("status")
-    
+
     if subscription.get("end_date") < date.today() and current_status == "active":
         current_status = "expired"
-        
+
     if current_status not in ["active", "canceled"]:
         raise HTTPException(
             status_code=status.HTTP_402_PAYMENT_REQUIRED,
@@ -53,19 +56,20 @@ async def get_profiles(token: TokenData = Depends(decode_token)):
     getprofiles = get_profiles_query(token.username)
     return getprofiles
 
+
 @router.put("/{profile_id}/", response_model=ProfileOut, status_code=status.HTTP_200_OK)
 async def update_profile(
-    profile_id: str, 
-    request: ProfileUpdateInput, 
-    token: TokenData = Depends(decode_token)
+        profile_id: str,
+        request: ProfileUpdateInput,
+        token: TokenData = Depends(decode_token)
 ):
     profile = update_full_profile_query(
         profile_id=profile_id,
         new_name=request.name,
         new_color=request.profile_color
     )
-    
+
     if not profile:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Profile not found in database")
-        
+
     return profile

@@ -1039,3 +1039,42 @@ def update_episode_query(episode_id: str, ep: EpisodeBase):
             ))
             conn.commit()
             return {"updated_episode_id": episode_id}
+
+def get_favorites_query(user_name: str):
+    with mariadb.connect(**db_config) as conn:
+        with conn.cursor() as cursor:
+            sql_profile = "SELECT id FROM PROFILE WHERE userUsername = ?"
+            cursor.execute(sql_profile, (user_name,))
+            row = cursor.fetchone()
+            if row is None:
+                raise HTTPException(
+                    status_code=status.HTTP_404_NOT_FOUND,
+                    detail="Profile not found."
+                )
+            idProfile = row[0]
+
+            sql = """
+                  SELECT c.id,
+                         c.title,
+                         c.description,
+                         c.duration,
+                         c.ageRating   AS age_rating,
+                         c.coverUrl    AS cover_url,
+                         c.videoUrl    AS video_url,
+                         c.type,
+                         c.logoURL     AS logo_url,
+                         c.portraitURL AS portrait_url,
+                         c.uploadDate  AS upload_date,
+                         c.releaseDate AS release_date
+                  FROM FAVORITE f
+                           JOIN CONTENT c ON f.contentId = c.id
+                  WHERE f.profileId = ?
+                  ORDER BY f.addedDate DESC \
+                  """
+            cursor.execute(sql, (idProfile,))
+            rows = cursor.fetchall()
+            return [ContentUser(
+                id=r[0], title=r[1], description=r[2], duration=r[3],
+                age_rating=r[4], cover_url=r[5], video_url=r[6], type=r[7],
+                logo_url=r[8], portrait_url=r[9], upload_date=r[10], release_date=r[11]
+            ) for r in rows]
