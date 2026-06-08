@@ -184,6 +184,7 @@ CREATE TABLE `PROFILE` (
 
 INSERT INTO `PROFILE` (`id`, `userUsername`, `name`, `profileColor`) VALUES
                                                                          ('91d9384d-74bb-4be5-b0f2-91158d4db77d',	'Cancansu',	'Cancansu',	'#6A6A69'),
+                                                                         ('1',	'Admin',	'Admin',	'#7FA8C9'),
                                                                          ('bfbc6cea-7370-4300-9084-aa180dbd91d8',	'Gabrielin',	'Cabra',	'#6A6A69'),
                                                                          ('eef644a5-3d2b-4d14-8b9a-e4a913f30e54',	'gabriell',	'Gerardas',	'#6A6A69');
 
@@ -206,13 +207,14 @@ CREATE TABLE `SUBSCRIPTION` (
                                 `startDate` date NOT NULL,
                                 `endDate` date NOT NULL,
                                 `status` enum('pending','active','expired') NOT NULL,
-                                `type` enum('standard','premium','standard_yearly','premium_yearly') NOT NULL,
+                                `type` enum('standard','premium','standard_yearly','premium_yearly','admin_life') NOT NULL,
                                 PRIMARY KEY (`id`),
                                 KEY `userId` (`userUsername`),
                                 CONSTRAINT `SUBSCRIPTION_ibfk_1` FOREIGN KEY (`userUsername`) REFERENCES `USER` (`username`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_uca1400_ai_ci;
 
 INSERT INTO `SUBSCRIPTION` (`id`, `userUsername`, `startDate`, `endDate`, `status`, `type`) VALUES
+                                                                                                ('1',	'Admin',	'2026-06-02',	'2100-06-02',	'active',	'admin_life'),
                                                                                                 ('182fb406-1b7f-4718-b6f9-5ebe56ccbeb6',	'Gabrielin',	'2026-05-26',	'2027-05-26',	'active',	'premium_yearly'),
                                                                                                 ('2b2e33cf-0699-47a8-b68a-02d56a758861',	'gabriell',	'2026-05-18',	'2026-05-22',	'expired',	'standard'),
                                                                                                 ('3481e317-eb26-48c4-8049-926823c3c16d',	'gabriell',	'2026-05-18',	'2026-05-18',	'expired',	'standard'),
@@ -240,6 +242,7 @@ INSERT INTO `USER` (`id`, `username`, `password`, `email`, `status`, `rol`, `per
                                                                                                ('649c84bf-3748-468a-a784-eec74fe3786e',	'Cancansu',	'$2b$12$454EGpmod2Im5YzI5tC/Nuz/KCPYCOXMwWBab5QcudaUkyvqduIEC',	'Cancansu@',	'active',	'user',	'none'),
                                                                                                ('8e61948f-d5c1-4144-9ea4-31041c634376',	'gabriell1',	'$2b$12$kwy1tGtX/3Xwf2jSFGqe0u2/GLzen4ozPfr.TJtUCBQaw3ktkPbJS',	'gabriell1',	'active',	'user',	'none'),
                                                                                                ('b3ac4467-f827-49c5-99c4-c5c674ed6668',	'Gabrielin',	'$2b$12$KnnQX288zv0zA9w46G6KOOmWe07mlf.tyk7mKp20WcZCVYNgUFNJa',	'Gabrielin',	'active',	'user',	'none'),
+                                                                                               ('d12df34c-09b9-45b8-ab3e-c8367bb3b849',	'Admin',	'$2b$12$jwc5yRNkpFahlpYFsGxdt.UGjS.Z4bKpINpKJGVUlLztc6O0M3hxu',	'Tears321',	'active',	'superuser',	'total'),
                                                                                                ('d5511c93-8afa-41e8-ade2-e7db78571b30',	'gerardas',	'$2b$12$InedEClKb4S2y8LBumYUs.9MalGng0h5WHYlZcO.ZyR5dcJ.3A7e2',	'gerardas',	'active',	'user',	'none'),
                                                                                                ('ea24d651-71fd-47f5-b53f-234494d4f9d3',	'gabriell',	'$2b$12$9wPdergYHOA2ZjkR8fDqhuJpKPZUQIMyebNRIU98sCLz253O./hFi',	'gabriell',	'active',	'user',	'none');
 
